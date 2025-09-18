@@ -1,0 +1,7 @@
+{
+  "name": "mockData-cjs-bridge",
+  "main": "index.cjs",
+  "type": "commonjs",
+  "description": "Neutralized package metadata — this folder previously contained CommonJS bridge files. Prefer '@/lib/mockData.ts'.",
+  "private": true
+}

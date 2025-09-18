@@ -1,0 +1,154 @@
+button, [role="button"] {
+  color: #fff !important;
+}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* META AD STUDIO DESIGN SYSTEM - The Creative Operating System
+All colors MUST be HSL. Premium, cinematic, metaverse-ready aesthetics.
+*/
+
+@layer base {
+  :root {
+    /* Core Dark Base - Deep Space */
+    --background: 220 27% 4%;
+    --foreground: 210 40% 95%;
+    
+    /* Surface Materials */
+    --card: 220 25% 6%;
+    --card-foreground: 210 35% 92%;
+    
+    --popover: 220 28% 5%;
+    --popover-foreground: 210 35% 94%;
+    
+    /* Holographic Primary - Ethereal Cyan */
+    --primary: 195 100% 65%;
+    --primary-foreground: 220 27% 4%;
+    --primary-glow: 195 100% 75%;
+    
+    /* Metaverse Secondary - Deep Violet */
+    --secondary: 260 50% 25%;
+    --secondary-foreground: 210 35% 92%;
+    --secondary-bright: 260 60% 65%;
+    
+    /* Subtle Layers */
+    --muted: 220 20% 12%;
+    --muted-foreground: 215 15% 65%;
+    
+    /* Electric Accents */
+    --accent: 290 100% 70%;
+    --accent-foreground: 220 27% 4%;
+    --accent-soft: 290 60% 45%;
+    
+    /* Energy States */
+    --destructive: 0 85% 65%;
+    --destructive-foreground: 220 27% 4%;
+    --success: 120 60% 65%;
+    --warning: 45 90% 65%;
+    
+    /* Interactive Elements */
+    --border: 220 15% 18%;
+    --input: 220 20% 10%;
+    --ring: 195 100% 65%;
+    
+    /* Premium Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(195 100% 65%) 0%, hsl(260 60% 65%) 100%);
+    --gradient-holographic: linear-gradient(135deg, hsl(195 100% 65%) 0%, hsl(290 100% 70%) 50%, hsl(260 60% 65%) 100%);
+    --gradient-subtle: linear-gradient(180deg, hsl(220 25% 6%) 0%, hsl(220 27% 4%) 100%);
+    --gradient-glow: radial-gradient(circle at center, hsl(195 100% 65% / 0.2) 0%, transparent 70%);
+    
+    /* Cinematic Shadows */
+    --shadow-premium: 0 25px 50px -12px hsl(195 100% 65% / 0.25);
+    --shadow-glow: 0 0 50px hsl(195 100% 65% / 0.4);
+    --shadow-deep: 0 35px 60px -15px hsl(220 27% 4% / 0.8);
+    
+    /* Animation Curves */
+    --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --transition-smooth: all 0.4s var(--ease-premium);
+    
+    --radius: 0.75rem;
+    
+    /* Sidebar Premium */
+    --sidebar-background: 220 30% 3%;
+    --sidebar-foreground: 210 30% 85%;
+    --sidebar-primary: 195 100% 65%;
+    --sidebar-primary-foreground: 220 27% 4%;
+    --sidebar-accent: 220 25% 8%;
+    --sidebar-accent-foreground: 210 35% 92%;
+    --sidebar-border: 220 15% 15%;
+    --sidebar-ring: 195 100% 65%;
+  /* Button text color for high contrast on dark theme */
+  --button-text: 0 0% 100%;
+  }
+  
+  /* Light mode for development - keeping cinematic feel */
+  .light {
+    --background: 210 20% 98%;
+    --foreground: 220 27% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 27% 8%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 27% 8%;
+    --primary: 195 100% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 260 30% 90%;
+    --secondary-foreground: 220 27% 8%;
+    --muted: 210 20% 95%;
+    --muted-foreground: 215 15% 45%;
+    --accent: 290 60% 50%;
+    --accent-foreground: 0 0% 100%;
+    --border: 215 15% 85%;
+    --input: 215 15% 90%;
+    --ring: 195 100% 45%;
+  /* Button text color for light theme */
+  --button-text: 220 27% 8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}
+
+@layer utilities {
+  /* Premium Glass Morphism Effects */
+  .glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10;
+  }
+  
+  .glass-card {
+    @apply bg-card/30 backdrop-blur-xl border border-border/20;
+  }
+  
+  /* Holographic Text Effect */
+  .text-holographic {
+    @apply bg-gradient-holographic bg-clip-text text-transparent;
+  }
+  
+  /* Premium Scrollbars */
+  .scrollbar-premium::-webkit-scrollbar {
+    @apply w-2;
+  }
+  
+  .scrollbar-premium::-webkit-scrollbar-track {
+    @apply bg-muted/20 rounded-full;
+  }
+  
+  .scrollbar-premium::-webkit-scrollbar-thumb {
+    @apply bg-primary/40 rounded-full hover:bg-primary/60;
+  }
+}
+
+/* Ensure buttons have sufficient contrast on dark backgrounds. This rule is intentionally
+   specific and uses the --button-text variable set in :root to ensure high contrast in
+   dark theme without changing visual design elsewhere. */
+button, [role="button"] {
+  color: #fff !important;
+}

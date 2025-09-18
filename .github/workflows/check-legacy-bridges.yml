@@ -1,0 +1,29 @@
+name: Check for legacy mockData bridges
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-legacy-bridges:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run legacy bridge check
+        run: |
+          set -e
+          echo "Searching for legacy mockData bridge files..."
+          RESULT=$(git ls-files 'src/lib/mockData.*' || true)
+          if echo "$RESULT" | grep -E "mockData\.(cjs|js)$" >/dev/null; then
+            echo "Found legacy bridge files:"\n$(echo "$RESULT" | grep -E "mockData\.(cjs|js)$")
+            exit 1
+          fi
+          if [ -f "src/lib/mockData/index.cjs" ] || [ -f "src/lib/mockData/package.json" ]; then
+            echo "Found legacy package bridge in src/lib/mockData/: index.cjs or package.json"
+            exit 1
+          fi
+          echo "No legacy bridges found."

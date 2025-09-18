@@ -1,0 +1,21 @@
+[
+  {
+    "id": "celestia_campaign_001",
+    "url": "/images/campaign-examples/aura_times_square.webp",
+    "srcWebp": "/images/campaign-examples/aura_times_square.webp",
+    "srcJpg": "/images/campaign-examples/aura_times_square.jpg",
+    "srcSet": {
+      "webp": "/images/campaign-examples/aura_times_square.webp",
+      "webp2x": "/images/campaign-examples/aura_times_square-2x.webp",
+      "jpg": "/images/campaign-examples/aura_times_square.jpg",
+      "jpg2x": "/images/campaign-examples/aura_times_square-2x.jpg"
+    },
+    "alt": "Celestia — Advertising Launch",
+    "credit": "Meta Ad Studio — seeded",
+    "prompt": "Celestia — immersive bioluminescent metaverse launch with interactive holograms",
+    "timestamp": "2025-09-18T14:31:17.747Z",
+    "engagement": 95,
+    "ctr": 6,
+    "reach": 300000
+  }
+]

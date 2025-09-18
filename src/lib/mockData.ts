@@ -1,0 +1,432 @@
+export interface GeneratedImage {
+  id: string;
+  url: string;
+  // Optional short preview video that can be played on hover
+  previewVideoUrl?: string;
+  srcWebp?: string;
+  srcJpg?: string;
+  // Accessibility and attribution
+  alt?: string;
+  credit?: string;
+  // Optional srcSet helpers for 1x / 2x delivery
+  srcSet?: {
+    webp?: string;
+    webp2x?: string;
+    jpg?: string;
+    jpg2x?: string;
+  };
+  prompt: string;
+  timestamp: Date;
+  engagement?: number;
+  ctr?: number;
+  reach?: number;
+}
+
+export interface TrendingConcept {
+  id: string;
+  title: string;
+  description: string;
+  growth: string;
+  engagement: string;
+  platforms: string[];
+  trend: 'up' | 'down' | 'stable';
+  promptSuggestion: string;
+}
+
+export interface PredictiveInsight {
+  id: string;
+  metric: string;
+  predicted: string;
+  confidence: string;
+  change: 'up' | 'down' | 'stable';
+}
+
+export const mockImages: GeneratedImage[] = [
+  {
+    id: '1',
+    url: 'https://images.unsplash.com/photo-1518709268805-4e9042af2176?w=800&h=600&fit=crop',
+    prompt: 'Luxury fashion brand launching in VR showroom with holographic models',
+    timestamp: new Date(),
+    engagement: 87,
+    ctr: 4.2,
+    reach: 125000
+  },
+  {
+    id: '2', 
+    url: 'https://images.unsplash.com/photo-1551739440-5dd934d3a94a?w=800&h=600&fit=crop',
+    prompt: 'Gaming platform community event with neon aesthetics',
+    timestamp: new Date(),
+    engagement: 92,
+    ctr: 5.8,
+    reach: 98000
+  },
+  {
+    id: '3',
+    url: 'https://images.unsplash.com/photo-1620121692029-d088224ddc74?w=800&h=600&fit=crop', 
+    prompt: 'NFT art collection reveal in cyberpunk metaverse environment',
+    timestamp: new Date(),
+    engagement: 79,
+    ctr: 3.9,
+    reach: 156000
+  },
+  {
+    id: '4',
+    url: 'https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?w=800&h=600&fit=crop',
+    prompt: 'Sustainable tech product launch in virtual eco-space',
+    timestamp: new Date(),
+    engagement: 84,
+    ctr: 4.7,
+    reach: 112000
+  },
+  // NOTE: The following four images are campaign exemplar placeholders.
+  // Replace these files with the high-impact campaign images generated
+  // using the "SUPER PROMPT" provided by the design team. Place the
+  // generated files under `public/images/campaign-examples/` and keep
+  // the filenames below, or update the `url` fields to match the
+  // filenames you choose.
+    {
+      id: 'campaign_1',
+      // Prefer modern, small WebP for performance. Fallback: aura_times_square.jpg
+  url: '/images/campaign-examples/aura_times_square.webp',
+  srcWebp: '/images/campaign-examples/aura_times_square.webp',
+  srcJpg: '/images/campaign-examples/aura_times_square.jpg',
+  srcSet: { webp: '/images/campaign-examples/aura_times_square.webp', webp2x: '/images/campaign-examples/aura_times_square-2x.webp', jpg: '/images/campaign-examples/aura_times_square.jpg', jpg2x: '/images/campaign-examples/aura_times_square-2x.jpg' },
+  alt: 'AURA Automotives — Genesis en la Lluvia de Neón',
+  previewVideoUrl: '/videos/campaign-previews/aura_preview.mp4',
+  credit: 'Meta Ad Studio — placeholder',
+  prompt: 'AURA Automotives — Genesis en la Lluvia de Neón',
+      timestamp: new Date(),
+      engagement: 98,
+      ctr: 7,
+      reach: 450000
+    },
+    {
+      id: 'campaign_2',
+      // Prefer modern, small WebP for performance. Fallback: atelier_cygnus_piccadilly.jpg
+  url: '/images/campaign-examples/atelier_cygnus_piccadilly.webp',
+  srcWebp: '/images/campaign-examples/atelier_cygnus_piccadilly.webp',
+  srcJpg: '/images/campaign-examples/atelier_cygnus_piccadilly.jpg',
+  srcSet: { webp: '/images/campaign-examples/atelier_cygnus_piccadilly.webp', webp2x: '/images/campaign-examples/atelier_cygnus_piccadilly-2x.webp', jpg: '/images/campaign-examples/atelier_cygnus_piccadilly.jpg', jpg2x: '/images/campaign-examples/atelier_cygnus_piccadilly-2x.jpg' },
+  alt: 'Atelier Cygnus — El Vuelo del Cisne Digital',
+  previewVideoUrl: '/videos/campaign-previews/cygnus_preview.mp4',
+  credit: 'Meta Ad Studio — placeholder',
+  prompt: 'Atelier Cygnus — El Vuelo del Cisne Digital',
+      timestamp: new Date(),
+      engagement: 92,
+      ctr: 6,
+      reach: 380000
+    },
+    {
+      id: 'campaign_3',
+      // Prefer modern, small WebP for performance. Fallback: nexus_arena_shibuya.jpg
+  url: '/images/campaign-examples/nexus_arena_shibuya.webp',
+  srcWebp: '/images/campaign-examples/nexus_arena_shibuya.webp',
+  srcJpg: '/images/campaign-examples/nexus_arena_shibuya.jpg',
+  srcSet: { webp: '/images/campaign-examples/nexus_arena_shibuya.webp', webp2x: '/images/campaign-examples/nexus_arena_shibuya-2x.webp', jpg: '/images/campaign-examples/nexus_arena_shibuya.jpg', jpg2x: '/images/campaign-examples/nexus_arena_shibuya-2x.jpg' },
+  alt: 'Nexus Arena — Shibuya Overdrive',
+  previewVideoUrl: '/videos/campaign-previews/nexus_preview.mp4',
+  credit: 'Meta Ad Studio — placeholder',
+  prompt: 'Nexus Arena — Shibuya Overdrive',
+      timestamp: new Date(),
+      engagement: 96,
+      ctr: 8,
+      reach: 500000
+    },
+    {
+      id: 'campaign_4',
+      // Prefer modern, small WebP for performance. Fallback: terrabio_singapore.jpg
+  url: '/images/campaign-examples/terrabio_singapore.webp',
+  srcWebp: '/images/campaign-examples/terrabio_singapore.webp',
+  srcJpg: '/images/campaign-examples/terrabio_singapore.jpg',
+  srcSet: { webp: '/images/campaign-examples/terrabio_singapore.webp', webp2x: '/images/campaign-examples/terrabio_singapore-2x.webp', jpg: '/images/campaign-examples/terrabio_singapore.jpg', jpg2x: '/images/campaign-examples/terrabio_singapore-2x.jpg' },
+  alt: 'Terrabio — El florecimiento de la Ciudad Esmeralda',
+  previewVideoUrl: '/videos/campaign-previews/terrabio_preview.mp4',
+  credit: 'Meta Ad Studio — placeholder',
+  prompt: 'Terrabio — El florecimiento de la Ciudad Esmeralda',
+      timestamp: new Date(),
+      engagement: 90,
+      ctr: 5,
+      reach: 420000
+    },
+];
+
+// Allow runtime addition of generated templates during the session.
+export function addTemplate(newImage: GeneratedImage) {
+  // Basic normalization: ensure unique id and timestamp
+  if (!newImage.id) newImage.id = `gen_${Date.now()}`;
+  if (!newImage.timestamp) newImage.timestamp = new Date();
+  // Deduplication: avoid inserting if same id or same url+prompt already exists
+  const existsById = mockImages.some(img => img.id === newImage.id);
+  const existsByContent = mockImages.some(img => img.url === newImage.url && img.prompt === newImage.prompt);
+  if (existsById || existsByContent) {
+    // No-op when duplicate detected
+    return;
+  }
+
+  mockImages.push(newImage);
+  // Persist updated templates
+  try { saveTemplatesToStorage(); } catch { /* no-op */ }
+}
+
+// Persistence helpers (session/local storage) to keep templates between reloads
+const STORAGE_KEY = 'meta_ad_studio_templates_v1';
+
+export function saveTemplatesToStorage() {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return;
+    const payload = JSON.stringify(mockImages);
+    window.localStorage.setItem(STORAGE_KEY, payload);
+  } catch (e) {
+    // ignore storage errors in non-critical demo flow
+    console.debug('saveTemplatesToStorage error', e);
+  }
+}
+
+export function loadTemplatesFromStorage(): GeneratedImage[] | null {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+  const parsed = JSON.parse(raw) as GeneratedImage[];
+  // Convert timestamp strings back to Date objects
+  parsed.forEach(p => { if (p.timestamp && typeof p.timestamp === 'string') p.timestamp = new Date(p.timestamp as unknown as string); });
+    return parsed;
+  } catch (e) {
+    console.debug('loadTemplatesFromStorage error', e);
+    return null;
+  }
+}
+
+// Export current templates as a downloadable JSON file
+export function exportTemplates(filename = 'plantillas-meta-ad-studio.json') {
+  try {
+    const payload = JSON.stringify(mockImages, null, 2);
+    const blob = new Blob([payload], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    console.debug('exportTemplates error', e);
+    throw e;
+  }
+}
+
+// Import templates from parsed JSON array, deduplicating using addTemplate
+export function importTemplatesFromJSON(parsed: unknown) {
+  if (!Array.isArray(parsed)) throw new Error('Invalid templates payload');
+  const added: GeneratedImage[] = [];
+  for (const item of parsed) {
+    try {
+      const candidate = item as GeneratedImage;
+      // minimal validation
+      if (!candidate.url || !candidate.prompt) continue;
+      // ensure timestamp is Date
+  if (candidate.timestamp && typeof candidate.timestamp === 'string') candidate.timestamp = new Date(candidate.timestamp as unknown as string);
+      const beforeLen = mockImages.length;
+      addTemplate(candidate);
+      if (mockImages.length > beforeLen) added.push(candidate);
+    } catch (e) { /* skip invalid entries */ }
+  }
+  return added;
+}
+
+// Import a campaign plan JSON (string) and create simulated templates based on phases/assets.
+// Unified import function: accepts either a JSON string representing
+// an array of templates or a campaign plan object with { campaignName, phases }.
+export function importData(jsonString: string): { success: boolean; message: string; count: number } {
+  try {
+    const parsed = JSON.parse(jsonString);
+
+    // If parsed is an array, reuse existing importer
+    if (Array.isArray(parsed)) {
+      const added = importTemplatesFromJSON(parsed);
+      return { success: true, message: `${added.length} plantillas importadas.`, count: added.length };
+    }
+
+    // Otherwise expect a campaign plan-like object
+  const data = parsed as { campaignName?: string; phases?: Array<{ name?: string; description?: string; assets?: unknown[] }> };
+    if (!data || !data.campaignName || !Array.isArray(data.phases)) {
+      throw new Error('El archivo JSON no parece ser un plan de campaña válido.');
+    }
+
+    let importedCount = 0;
+    for (const phase of data.phases) {
+      if (!phase || !Array.isArray(phase.assets)) continue;
+      for (const assetId of phase.assets) {
+        if (!assetId || typeof assetId !== 'string') continue;
+
+        // Check if asset id already exists in mockImages
+        const existing = mockImages.find(m => m.id === assetId);
+        if (existing) {
+          // Already present: skip adding but consider using its data in any downstream mapping
+          continue;
+        }
+
+        const newTemplate: GeneratedImage = {
+          id: assetId,
+          prompt: phase.description || data.campaignName,
+          url: '/images/campaign-examples/aura_times_square.webp',
+          alt: `${data.campaignName} - ${phase.name || 'asset'}`,
+          credit: 'Generado por Meta Ad Studio',
+          srcJpg: '/images/campaign-examples/aura_times_square.jpg',
+          srcWebp: '/images/campaign-examples/aura_times_square.webp',
+          srcSet: { webp: '/images/campaign-examples/aura_times_square.webp', webp2x: '/images/campaign-examples/aura_times_square-2x.webp', jpg: '/images/campaign-examples/aura_times_square.jpg', jpg2x: '/images/campaign-examples/aura_times_square-2x.jpg' },
+          timestamp: new Date()
+        };
+
+        const beforeLen = mockImages.length;
+        addTemplate(newTemplate);
+        if (mockImages.length > beforeLen) importedCount++;
+      }
+    }
+
+    if (importedCount === 0) {
+      return { success: true, message: `Campaña "${data.campaignName}" analizada, pero no se encontraron nuevos templates para importar.`, count: 0 };
+    }
+
+    return { success: true, message: `¡Campaña "${data.campaignName}" importada! Se añadieron ${importedCount} nuevas plantillas.`, count: importedCount };
+  } catch (error) {
+    console.error('importData error', error);
+    return { success: false, message: 'Error al importar: El archivo podría estar dañado o no tener el formato correcto.', count: 0 };
+  }
+}
+
+// Test helper: reset mock images to initial or provided array (only used by tests)
+// Test helper: reset mock images to initial or provided array (only used by tests)
+export function _resetMockImages(newArr?: GeneratedImage[]) {
+  // replace contents of mockImages while keeping reference
+  while (mockImages.length) mockImages.pop();
+  if (newArr && Array.isArray(newArr)) {
+    for (const it of newArr) mockImages.push(it);
+  }
+  try { saveTemplatesToStorage(); } catch { /* noop */ }
+}
+
+export function getTemplates(): GeneratedImage[] {
+  return mockImages.slice();
+}
+
+export function removeTemplate(id: string) {
+  const idx = mockImages.findIndex(m => m.id === id);
+  if (idx === -1) return false;
+  mockImages.splice(idx, 1);
+  try { saveTemplatesToStorage(); } catch { /* noop */ }
+  return true;
+}
+
+export const trendingConcepts: TrendingConcept[] = [
+  {
+    id: '1',
+    title: 'Solarpunk Aesthetics',
+    description: 'Bio-architecture and green/gold palettes dominating Decentraland',
+    growth: '+342%',
+    engagement: '94.2%',
+    platforms: ['Decentraland', 'VRChat', 'Horizon'],
+    trend: 'up',
+    promptSuggestion: 'Incorporate bio-architecture elements with green and gold color palette in sustainable tech showcase'
+  },
+  {
+    id: '2', 
+    title: 'Interactive Holographic Concerts',
+    description: 'User avatars influencing live music performances',
+    growth: '+198%',
+    engagement: '87.8%',
+    platforms: ['VRChat', 'Rec Room', 'Meta Horizon'],
+    trend: 'up',
+    promptSuggestion: 'Create immersive concert experience where audience avatars can interact with holographic performers'
+  },
+  {
+    id: '3',
+    title: 'Minimalist Luxury Spaces',
+    description: 'Clean, premium environments with subtle brand integration',
+    growth: '+156%',
+    engagement: '91.5%', 
+    platforms: ['Spatial', 'Mozilla Hubs', 'NVIDIA Omniverse'],
+    trend: 'up',
+    promptSuggestion: 'Design elegant minimalist showroom with subtle luxury brand elements and premium materials'
+  },
+  {
+    id: '4',
+    title: 'Gamified Shopping',
+    description: 'Quest-based product discovery in virtual marketplaces',
+    growth: '+278%',
+    engagement: '88.9%',
+    platforms: ['Roblox', 'Fortnite Creative', 'Core'],
+    trend: 'up',
+    promptSuggestion: 'Transform product showcase into interactive adventure where users unlock features through exploration'
+  }
+];
+
+export const basePredictiveInsights: PredictiveInsight[] = [
+  {
+    id: '1',
+    metric: 'Engagement Rate',
+    predicted: '89.2%',
+    confidence: '94%',
+    change: 'up'
+  },
+  {
+    id: '2',
+    metric: 'Click-Through Rate', 
+    predicted: '4.7%',
+    confidence: '87%',
+    change: 'up'
+  },
+  {
+    id: '3',
+    metric: 'Conversion Rate',
+    predicted: '12.3%',
+    confidence: '91%',
+    change: 'up'
+  },
+  {
+    id: '4',
+    metric: 'Reach Multiplier',
+    predicted: '2.4x',
+    confidence: '89%',
+    change: 'up'
+  }
+];
+
+export const generateRandomInsights = (): PredictiveInsight[] => {
+  return basePredictiveInsights.map(insight => ({
+    ...insight,
+    predicted: generateRandomMetric(insight.metric),
+    confidence: `${Math.floor(Math.random() * 15 + 80)}%`,
+    change: Math.random() > 0.7 ? 'down' : 'up'
+  }));
+};
+
+const generateRandomMetric = (metric: string): string => {
+  switch (metric) {
+    case 'Engagement Rate':
+      return `${(Math.random() * 20 + 75).toFixed(1)}%`;
+    case 'Click-Through Rate':
+      return `${(Math.random() * 3 + 3).toFixed(1)}%`;
+    case 'Conversion Rate':
+      return `${(Math.random() * 8 + 8).toFixed(1)}%`;
+    case 'Reach Multiplier':
+      return `${(Math.random() * 2 + 2).toFixed(1)}x`;
+    default:
+      return '0%';
+  }
+};
+
+export const promptSuggestions = {
+  assisted: [
+    'Luxury fashion brand launching in VR showroom',
+    'Gaming platform community event announcement', 
+    'NFT art collection reveal campaign'
+  ],
+  categories: [
+    'Visual Ads',
+    'Interactive Experiences', 
+    'Brand Activations',
+    'Product Showcases'
+  ]
+};

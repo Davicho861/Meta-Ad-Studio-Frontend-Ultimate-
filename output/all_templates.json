@@ -1,0 +1,18 @@
+[
+  {
+    "id": "campaign_1758148038442",
+    "prompt": "Fotografía cinematográfica de una galería de arte minimalista y oscura en el metaverso. En el centro, un reloj de lujo 'Celestia' flota suspendido en el aire, desconstruyéndose lentamente en un remolino de engranajes y partículas de luz holográfica. Avatares elegantes observan la obra de arte, sus rostros iluminados por el brillo del reloj. El eslogan 'El Tiempo es un Lienzo' está proyectado sutilmente en el suelo. Atmósfera de exclusividad y asombro, estilo fotográfico de un museo de arte moderno, 8K, hiperrealista. --ar 16:9",
+    "url": "/images/campaign-examples/aura_times_square.webp",
+    "alt": "Una campaña de lujo para Celestia en una galería de arte del metaverso.",
+    "credit": "Generado por Meta Ad Studio",
+    "srcJpg": "/images/campaign-examples/aura_times_square.jpg",
+    "srcWebp": "/images/campaign-examples/aura_times_square.webp",
+    "srcSet": {
+      "webp": "/images/campaign-examples/aura_times_square.webp",
+      "webp2x": "/images/campaign-examples/aura_times_square-2x.webp",
+      "jpg": "/images/campaign-examples/aura_times_square.jpg",
+      "jpg2x": "/images/campaign-examples/aura_times_square-2x.jpg"
+    },
+    "timestamp": "2025-09-17T22:27:18.445Z"
+  }
+]
