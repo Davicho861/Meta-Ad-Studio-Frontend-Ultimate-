@@ -115,3 +115,90 @@ declare global {
 if (typeof window !== 'undefined' && import.meta.env.VITE_APP_ENV === 'development' && !window.__APP_STORE__) {
   window.__APP_STORE__ = useStore;
 }
+
+// ---- Test helpers (DEV/E2E only) ----
+// Add minimal helpers to manipulate templates programmatically from tests.
+// These are intentionally only attached in development or when an E2E flag is set.
+export function clearTemplates() {
+  try {
+    setTimeout(() => {
+      // empty the store's generatedAssets and localStorage
+      useStore.setState({ generatedAssets: [] });
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem('meta_ad_studio_templates_v1');
+      }
+    }, 0);
+    return true;
+  } catch (e) {
+    console.debug('clearTemplates failed', e);
+    return false;
+  }
+}
+
+export function addTemplates(templates: GeneratedImage[]) {
+  try {
+    // normalize timestamps
+    const normalized = (templates || []).map(t => ({ ...t, timestamp: t.timestamp ? new Date(t.timestamp as unknown as string) : new Date() }));
+    // merge into existing generatedAssets
+  useStore.setState((state: AppState) => {
+      const existing = state.generatedAssets || [];
+      const merged = existing.concat(normalized);
+      // persist to localStorage
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem('meta_ad_studio_templates_v1', JSON.stringify(merged));
+        }
+      } catch (e) { /* noop */ }
+  return { generatedAssets: merged } as Partial<AppState> as AppState;
+    });
+    return true;
+  } catch (e) {
+    console.debug('addTemplates failed', e);
+    return false;
+  }
+}
+
+export function setPreviewVideo(id: string, url: string) {
+  try {
+    useStore.setState((state: AppState) => {
+      const assets = state.generatedAssets || [];
+      const idx = assets.findIndex(a => a.id === id);
+      if (idx === -1) return {} as Partial<AppState> as AppState;
+      const copy = assets.slice();
+      copy[idx] = { ...copy[idx], previewVideoUrl: url };
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem('meta_ad_studio_templates_v1', JSON.stringify(copy));
+        }
+      } catch (e) { /* noop */ }
+      return { generatedAssets: copy, selectedImage: copy[idx] } as Partial<AppState> as AppState;
+    });
+    return true;
+  } catch (e) {
+    console.debug('setPreviewVideo failed', e);
+    return false;
+  }
+}
+
+// Expose a compact helpers object on window for E2E when in DEV or when __E2E__ is true
+// Attach helpers to window for DEV/E2E. Use eslint-disable comments to avoid noisy rules
+// since these are intentionally dynamic, dev-only helpers.
+/* eslint-disable @typescript-eslint/no-explicit-any */
+if (typeof window !== 'undefined' && (import.meta.env.DEV || window.__E2E__)) {
+  try {
+  (window as any).__APP_STORE_HELPERS__ = (window as any).__APP_STORE_HELPERS__ || {};
+  (window as any).__APP_STORE_HELPERS__.clearTemplates = clearTemplates;
+  (window as any).__APP_STORE_HELPERS__.addTemplates = addTemplates;
+  (window as any).__APP_STORE_HELPERS__.selectImageById = (id: string) => {
+      if (!id) return false;
+      const found = useStore.getState().generatedAssets?.find((g: any) => g.id === id) || null;
+      useStore.setState({ selectedImage: found });
+      return !!found;
+    };
+    // attach setPreviewVideo directly so tests can deterministically set preview urls
+    (window as any).__APP_STORE_HELPERS__.setPreviewVideo = (id: string, url: string) => {
+      return setPreviewVideo(id, url);
+    };
+  } catch (e) { console.debug('attach helpers failed', e); }
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */

@@ -1,0 +1,25 @@
+{
+  "templates": [
+    {
+      "id": "celestia-el-brindis-sincronizado",
+      "title": "Celestia: El Brindis Sincronizado",
+      "source": "seed-celestia",
+      "thumbnail": "/images/campaign-examples/coca-cola-drones-paris.jpg",
+      "preview": "/images/campaign-examples/coca-cola-drones-paris.jpg",
+      "provider": "celestia",
+      "createdAt": "2025-09-18T18:08:19.717Z",
+      "prompt": "Celestia — Fotografía hiperrealista cinematográfica, vista de dron al atardecer sobre París, múltiples drones formando el logo de Coca-Cola en el cielo, tonos cálidos, luces de ciudad, bokeh, ultra-detailed, 8k",
+      "tags": [
+        "coca-cola",
+        "drones",
+        "fotografía",
+        "parís",
+        "campaña"
+      ],
+      "metadata": {
+        "author": "Meta Ad Studio Seed",
+        "license": "internal-seed"
+      }
+    }
+  ]
+}

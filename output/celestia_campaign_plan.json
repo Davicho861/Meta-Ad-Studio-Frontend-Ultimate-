@@ -1,26 +1,13 @@
 {
   "campaignName": "Celestia: El Tiempo es un Lienzo",
-  "targetAudience": "Consumidores de lujo, entusiastas de la tecnología y coleccionistas de arte digital.",
   "phases": [
     {
-      "name": "Fase 1: Teaser y Expectación",
-      "description": "Lanzamiento de imágenes en redes sociales mostrando partículas de reloj y fragmentos del eslogan.",
+      "name": "Fase 1 - Lanzamiento de imágenes",
+      "description": "Lanzamiento de imágenes",
       "assets": [
-        "campaign_1758148038442"
-      ],
-      "notes": "Copy: 'El Tiempo no se mide. Se experimenta.'"
-    },
-    {
-      "name": "Fase 2: Evento Exclusivo",
-      "description": "Inauguración de la 'Galería Efímera Celestia' en Decentraland Art Week. Abierta solo por 24 horas.",
-      "assets": [],
-      "notes": "Coordinar con influencers de arte digital para la premiere."
-    },
-    {
-      "name": "Fase 3: Recompensa y Conversión",
-      "description": "Los asistentes al evento reciben un NFT 'Fragmento de Tiempo' que otorga acceso prioritario a la lista de compra del reloj.",
-      "assets": [],
-      "notes": "El NFT debe tener un diseño basado en los engranajes del reloj."
+        "celestia_asset_1",
+        "celestia_asset_2"
+      ]
     }
   ]
 }

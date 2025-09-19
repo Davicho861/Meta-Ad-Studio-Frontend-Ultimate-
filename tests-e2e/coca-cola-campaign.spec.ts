@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { test, expect } from '@playwright/test';
 
 test('Cognitive Campaign Creation: "El Brindis Sincronizado" para Coca-Cola', async ({ page }) => {

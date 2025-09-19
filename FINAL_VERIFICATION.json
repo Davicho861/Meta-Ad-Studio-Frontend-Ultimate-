@@ -1,0 +1,6 @@
+{
+  "base": "http://localhost:5174",
+  "seedUrl": "http://localhost:5174/seed-celestia.html?noredirect=1",
+  "screenshot": "/home/davicho/meta-canvas-orchestra-main/FINAL_VERIFICATION.png",
+  "found": true
+}

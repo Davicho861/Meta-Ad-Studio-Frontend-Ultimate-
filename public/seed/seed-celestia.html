@@ -15,7 +15,7 @@
     </style>
   </head>
   <body>
-    <div class="card">
+  <div class="card">
       <img id="thumb" class="thumb" alt="thumbnail" src="/images/campaign-examples/coca-cola-drones-paris.jpg" />
       <h1>Inyección: El Brindis Sincronizado</h1>
       <p id="status">Preparando inyección...</p>
@@ -28,7 +28,7 @@
   <!-- Visible hook used by E2E tests to assert seed execution -->
   <pre id="result" style="background:transparent;color:#9be8ff;border:none">Running seed...</pre>
 
-  <script>
+    <script>
       async function run() {
         const status = document.getElementById('status')
         try {
@@ -48,6 +48,14 @@
               localStorage.setItem(key, JSON.stringify(merged))
             } else {
               localStorage.setItem(key, JSON.stringify(data))
+
+                  // Update confirmation element so E2E tests can assert the seed ran
+                  try {
+                    const pre = document.getElementById('result');
+                    if (pre) pre.textContent = `Seed injected to localStorage key: ${key}`;
+                  } catch (e) {
+                    // noop
+                  }
             }
           } catch(e) {
             // fallback to overwrite
@@ -57,14 +65,7 @@
           status.textContent = ''
           document.getElementById('actions').style.display = 'block'
 
-          // Update confirmation element so E2E tests can assert the seed ran
-          try {
-            const pre = document.getElementById('result');
-            if (pre) pre.textContent = `Seed injected to localStorage key: ${key}`;
-          } catch (e) {
-            // noop
-          }
-
+          // Only redirect automatically if the 'noredirect' query param is not present
           const params = new URLSearchParams(window.location.search || '');
           const shouldRedirect = !params.has('noredirect');
 
@@ -84,51 +85,6 @@
         }
       }
       run()
-    </script>
-  </body>
-</html>
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Seed Celestia — Meta Ad Studio</title>
-  </head>
-  <body>
-    <h1>Seed Celestia</h1>
-    <p>Injecting demo template into localStorage for Meta Ad Studio...</p>
-    <pre id="result" style="white-space:pre-wrap;word-break:break-word;"></pre>
-    <script>
-      (function() {
-        try {
-          const seed = [
-            {
-              id: 'celestia_campaign_001',
-              url: '/images/campaign-examples/aura_times_square.webp',
-              srcWebp: '/images/campaign-examples/aura_times_square.webp',
-              srcJpg: '/images/campaign-examples/aura_times_square.jpg',
-              srcSet: { webp: '/images/campaign-examples/aura_times_square.webp', webp2x: '/images/campaign-examples/aura_times_square-2x.webp', jpg: '/images/campaign-examples/aura_times_square.jpg', jpg2x: '/images/campaign-examples/aura_times_square-2x.jpg' },
-              alt: 'Celestia — Advertising Launch',
-              credit: 'Meta Ad Studio — seeded',
-              prompt: 'Celestia — immersive bioluminescent metaverse launch with interactive holograms',
-              timestamp: new Date().toISOString(),
-              engagement: 95,
-              ctr: 6,
-              reach: 300000
-            }
-          ];
-
-          const key = 'meta_ad_studio_templates_v1';
-          localStorage.setItem(key, JSON.stringify(seed));
-          document.getElementById('result').textContent = 'Seed injected to localStorage key: ' + key + '\n\n' + JSON.stringify(seed, null, 2);
-
-          // Redirect back to the app so the templates are visible
-          setTimeout(() => {
-            try { window.location.href = '/campaigns'; } catch (e) { window.location.href = '/'; }
-          }, 1200);
-        } catch (e) {
-          document.getElementById('result').textContent = 'Error injecting seed: ' + e;
-        }
-      })();
     </script>
   </body>
 </html>

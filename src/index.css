@@ -146,6 +146,17 @@ All colors MUST be HSL. Premium, cinematic, metaverse-ready aesthetics.
   }
 }
 
+/* Disable animations/transitions when running in test mode to reduce E2E flakiness */
+[data-test-mode="true"] *,
+[data-test-mode="true"] *::before,
+[data-test-mode="true"] *::after {
+  animation-duration: 0s !important;
+  transition-duration: 0s !important;
+  animation-delay: 0s !important;
+  transition-delay: 0s !important;
+  animation-iteration-count: 1 !important;
+}
+
 /* Ensure buttons have sufficient contrast on dark backgrounds. This rule is intentionally
    specific and uses the --button-text variable set in :root to ensure high contrast in
    dark theme without changing visual design elsewhere. */

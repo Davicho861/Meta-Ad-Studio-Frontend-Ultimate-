@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as msw from 'msw';
 
 const http = (msw as any).http;
