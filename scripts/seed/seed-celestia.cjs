@@ -1,3 +1,33 @@
+#!/usr/bin/env node
+const fs = require('fs')
+const path = require('path')
+
+const outDir = path.join(__dirname, '..', '..', 'public', 'seed')
+const outFile = path.join(outDir, 'celestia-campaign-seed.json')
+
+const campaign = {
+  id: 'celestia-el-brindis-sincronizado',
+  title: 'El Brindis Sincronizado',
+  source: 'seed-celestia',
+  thumbnail: '/images/campaign-examples/coca-cola-drones-paris.jpg',
+  preview: '/images/campaign-examples/coca-cola-drones-paris.jpg',
+  provider: 'celestia',
+  createdAt: new Date().toISOString(),
+  prompt: 'Fotografía hiperrealista cinematográfica, vista de dron al atardecer sobre París, múltiples drones formando el logo de Coca-Cola en el cielo, tonos cálidos, luces de ciudad, bokeh, ultra-detailed, 8k',
+  tags: ['coca-cola', 'drones', 'fotografía', 'parís', 'campaña'],
+  metadata: {
+    author: 'Meta Ad Studio Seed',
+    license: 'internal-seed'
+  }
+}
+
+function ensureDir(dir) {
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+}
+
+ensureDir(outDir)
+fs.writeFileSync(outFile, JSON.stringify({ templates: [campaign] }, null, 2), 'utf8')
+console.log('Wrote seed to', outFile)
 /**
  * Seed script (CommonJS) para generar una plantilla "Celestia".
  * Uso propuesto:

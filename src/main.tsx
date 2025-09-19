@@ -2,7 +2,7 @@ import React from 'react';
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { getAppStore } from '@/store/useStore';
+import { getAppStore, setPreviewVideo as storeSetPreviewVideo, addTemplates as storeAddTemplates, clearTemplates as storeClearTemplates } from '@/store/useStore';
 import { loadTemplatesFromStorage, getTemplates, GeneratedImage } from '@/lib/mockData.ts';
 // Sentry: initialize only in production
 if (typeof window !== 'undefined' && import.meta.env.PROD && import.meta.env.VITE_SENTRY_DSN) {
@@ -18,20 +18,115 @@ if (typeof window !== 'undefined' && import.meta.env.PROD && import.meta.env.VIT
 	})();
 }
 
-// Typed attachment of the dev-only store hook factory for E2E tests.
-declare global {
-	interface Window {
-	__APP_STORE__?: unknown;
+// Mount React App (always)
+if (typeof document !== 'undefined') {
+	try {
+		const rootEl = document.getElementById('root');
+		if (rootEl) {
+			const r = createRoot(rootEl);
+			r.render(React.createElement(App));
+		}
+	} catch (e) {
+		// Non-blocking: if mount fails tests will show empty DOM
+		// eslint-disable-next-line no-console
+		console.debug('App mount failed', e);
 	}
 }
 
-// Attach dev-only store to window only in development environment for E2E.
-if (typeof window !== 'undefined' && import.meta.env.VITE_APP_ENV === 'development' && !window.__APP_STORE__) {
-	window.__APP_STORE__ = getAppStore();
-	// E2E: __APP_STORE__ attached (development only)
+// Typed attachment of the dev-only store hook factory for E2E tests.
+declare global {
+		interface AppStoreHelpers {
+			addTemplates?: (t: GeneratedImage[]) => boolean;
+			clearTemplates?: () => boolean;
+			selectImageById?: (id: string) => boolean;
+			setPreviewVideo?: (id: string, url: string) => boolean;
+		}
+		interface Window {
+		__APP_STORE__?: unknown;
+		__E2E__?: boolean;
+		__APP_STORE_HELPERS__?: AppStoreHelpers;
+		}
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+// Attach dev-only store to window when running locally (DEV) or when tests opt-in via __E2E__
+if (typeof window !== 'undefined' && (import.meta.env.DEV || window.__E2E__) && !window.__APP_STORE__) {
+	window.__APP_STORE__ = getAppStore();
+	// E2E/DEV: __APP_STORE__ attached
+}
+
+// Expose higher level helpers for E2E tests. These helpers are only attached
+// in development or when the test runner flags window.__E2E__ prior to app load.
+if (typeof window !== 'undefined') {
+	try {
+			const shouldAttach = import.meta.env.DEV || window.__E2E__;
+			if (shouldAttach) {
+				window.__APP_STORE_HELPERS__ = window.__APP_STORE_HELPERS__ || {};
+				window.__APP_STORE_HELPERS__.addTemplates = storeAddTemplates;
+				window.__APP_STORE_HELPERS__.clearTemplates = storeClearTemplates;
+				// attach a safe shim that delegates to the store-level helper to avoid recursion
+				window.__APP_STORE_HELPERS__.setPreviewVideo = (id: string, url: string) => {
+					try {
+						// Prefer the direct store helper if exported
+						if (typeof storeSetPreviewVideo === 'function') return storeSetPreviewVideo(id, url);
+						// Fallback: attempt to call the store instance
+						const store = getAppStore();
+						// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						return (store as any).setPreviewVideo ? (store as any).setPreviewVideo(id, url) : false;
+					} catch (e) { return false; }
+				};
+				window.__APP_STORE_HELPERS__.selectImageById = (id: string) => {
+				try {
+					const store = getAppStore();
+					const state = store.getState();
+						  const found = state.generatedAssets?.find((g: GeneratedImage) => g.id === id) || null;
+					store.setState({ selectedImage: found });
+					return !!found;
+				} catch (e) { return false; }
+			};
+		}
+	} catch (e) { /* non-blocking */ }
+}
+// If E2E mode was flagged, set the body attribute to disable animations via CSS.
+if (typeof window !== 'undefined' && (window.__E2E__ || import.meta.env.DEV)) {
+	try {
+ 		document.body.setAttribute('data-test-mode', (window.__E2E__ ? 'true' : 'true'));
+ 	} catch (e) { /* noop */ }
+
+	// DEV-only: event-driven bridge for E2E commands. Keeps production code free of test hacks.
+	// Listens for 'e2e-command' CustomEvent with detail { command, payload } and delegates to
+	// the store helpers previously attached to window.__APP_STORE_HELPERS__.
+	try {
+		window.addEventListener('e2e-command', (ev: Event) => {
+			try {
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const ce = ev as CustomEvent<{ command: string; payload: any }>;
+				const { command, payload } = ce.detail || {};
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				const storeHelpers = (window as any).__APP_STORE_HELPERS__;
+				if (storeHelpers && typeof storeHelpers[command] === 'function') {
+					let result: any = null;
+					try {
+						// Support a payload convention: if payload is an object { args: [...] }
+						// then spread args into the helper call. Otherwise pass payload as single arg.
+						if (payload && typeof payload === 'object' && Array.isArray((payload as any).args)) {
+							result = storeHelpers[command](...((payload as any).args));
+						} else {
+							result = storeHelpers[command](payload);
+						}
+					} catch (e) { /* noop */ }
+					window.dispatchEvent(new CustomEvent('e2e-response', { detail: { status: 'success', command, result } }));
+				} else {
+					window.dispatchEvent(new CustomEvent('e2e-response', { detail: { status: 'error', command, message: 'Command not found' } }));
+				}
+			} catch (e) { /* noop */ }
+		});
+		// Signal to tests that the E2E bridge is ready to accept commands
+		try {
+			(window as any).__E2E_READY__ = true;
+			window.dispatchEvent(new CustomEvent('e2e-ready', { detail: { ready: true } }));
+		} catch (e) { /* noop */ }
+	} catch (e) { /* noop */ }
+}
 
 // In development, check that campaign example assets exist and warn if missing.
 if (import.meta.env.DEV) {

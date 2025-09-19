@@ -5,9 +5,10 @@ import type { GeneratedImage } from '../lib/mockData';
 interface Props {
   image: GeneratedImage;
   className?: string;
+  onClick?: (image: GeneratedImage) => void;
 }
 
-export default function GalleryCard({ image, className = '' }: Props) {
+export default function GalleryCard({ image, className = '', onClick }: Props) {
   const [isHovered, setIsHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -39,10 +40,18 @@ export default function GalleryCard({ image, className = '' }: Props) {
       className={`relative overflow-hidden rounded-md ${className}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={() => {
+        try {
+          if (onClick) onClick(image);
+        } catch {
+          /* noop */
+        }
+      }}
       initial={{ scale: 1 }}
       whileHover={{ scale: 1.02 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
+      {/* clickable area: event delegated by parent when needed via pointer events */}
       <img
         src={image.srcWebp || image.url}
         alt={image.alt || image.prompt}
