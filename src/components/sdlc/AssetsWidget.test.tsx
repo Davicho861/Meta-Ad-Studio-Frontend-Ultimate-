@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
+import { act } from 'react';
 import AssetsWidget from './AssetsWidget';
 
 describe('AssetsWidget', () => {
@@ -46,7 +47,9 @@ describe('AssetsWidget', () => {
 
   // When retry succeeds, items should render
   (g.fetch as unknown) = vi.fn(() => Promise.resolve({ json: () => Promise.resolve({ releases: [{ version: 'v9', zip: '/d.zip', notes: 'ok' }] }) })) as unknown as typeof fetch;
-  screen.getByText('Reintentar').click();
+  await act(async () => {
+    screen.getByText('Reintentar').click();
+  });
   await waitFor(() => expect(screen.getByText('v9')).toBeInTheDocument());
   });
 });

@@ -1,562 +1,388 @@
-import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { DndContext, DragEndEvent, useDraggable, useDroppable, PointerSensor, KeyboardSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { useStore } from '@/store/useStore';
-import { useSound } from '@/hooks/useSound';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { mockImages } from '@/lib/mockData';
-import GalleryCard from './GalleryCard';
-import cognitiveCore from '@/lib/cognitive-core';
-import { 
-  ArrowLeft, 
-  Plus, 
-  StickyNote, 
-  Upload, 
-  CheckCircle, 
-  Clock, 
-  XCircle,
-  Share,
-  Download
-} from 'lucide-react';
+import { useStore, addTemplates } from '@/store/useStore';
+import { setPreviewVideo } from '@/store/useStore';
+import generateVideoPrompt from '@/lib/AIPromptGenerator';
+import { GeneratedImage } from '@/lib/mockData';
+import { filterAssets } from '@/lib/filterAssets';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, DragOverlay } from '@dnd-kit/core';
+import { useDraggable } from '@dnd-kit/core';
+import { useDroppable } from '@dnd-kit/core';
 
-type AssetStatus = 'review' | 'approved' | 'rejected';
-
-interface CanvasAsset {
-  id: string;
-  type: 'image' | 'note';
+type CanvasAsset = {
+  id: string; // unique instance id
+  templateId: string; // reference to GeneratedImage.id
   x: number;
   y: number;
-  content: string;
-  status: AssetStatus;
-  imageUrl?: string;
-}
+};
 
-export const CampaignCanvas = () => {
-  const { generatedAssets, currentUserRole } = useStore();
-  const { playSound } = useSound();
+const CANVAS_STORAGE_KEY = 'campaign_canvas_state_v1';
+
+const CampaignCanvas: React.FC = () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fetchTemplates = useStore((s: any) => s.fetchTemplates);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const generatedAssets = useStore((s: any) => s.generatedAssets || []);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const setSelectedImage = useStore((s: any) => s.setSelectedImage);
+
+  const [query, setQuery] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'generated' | 'uploaded'>('all');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Canvas state: instances placed on canvas with positions
   const [canvasAssets, setCanvasAssets] = useState<CanvasAsset[]>([]);
-  const [inconsistentConnections, setInconsistentConnections] = useState<string[]>([]);
-  const [showNoteInput, setShowNoteInput] = useState(false);
-  const [noteText, setNoteText] = useState('');
+  const [selectedInstanceId, setSelectedInstanceId] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const lastPointer = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [activeId, setActiveId] = useState<string | null>(null);
 
-  const assetsToShow = generatedAssets.length > 0 ? generatedAssets : mockImages;
+  const sensors = useSensors(useSensor(PointerSensor));
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, delta } = event;
-    
-    if (active.id.toString().startsWith('sidebar-image-')) {
-      // Dragging from sidebar - create new asset
-      const imageId = active.id.toString().replace('sidebar-image-', '');
-      const image = assetsToShow.find(img => img.id === imageId);
-      
-      if (image) {
-        const newAsset: CanvasAsset = {
-          id: `canvas-${Date.now()}`,
-          type: 'image',
-          x: Math.max(0, delta.x + 300),
-          y: Math.max(0, delta.y + 100),
-          content: image.prompt,
-          status: 'review',
-          imageUrl: image.url
-        };
-        
-        setCanvasAssets(prev => [...prev, newAsset]);
-  playSound('toggle');
-        toast.success('Asset added to canvas');
-
-        // Proactive: generate initial suggestions as ghost hints (non-persistent)
-        // We store them in a lightweight state by adding very small notes marked 'review'
-        const suggestions = cognitiveCore.suggestNextSteps(image.id, { assets: [{ id: newAsset.id, name: image.id, aesthetics: image.prompt }] });
-        // Add first suggestion as a gentle ghost note on the canvas
-        if (suggestions && suggestions.length > 0) {
-          const s = suggestions[0];
-          const ghostNote: CanvasAsset = {
-            id: `ghost-${Date.now()}`,
-            type: 'note',
-            x: newAsset.x + 220,
-            y: newAsset.y,
-            content: `${s.title}: ${s.description}`,
-            status: 'review'
-          };
-          setCanvasAssets(prev => [...prev, ghostNote]);
-        }
-      }
-    } else {
-      // Moving existing canvas asset
-      const assetId = active.id.toString();
-      setCanvasAssets(prev => prev.map(asset => 
-        asset.id === assetId 
-          ? { ...asset, x: asset.x + delta.x, y: asset.y + delta.y }
-          : asset
-      ));
-    }
-  };
-
-  const handleAddNote = () => {
-    if (!noteText.trim()) return;
-    
-    const newNote: CanvasAsset = {
-      id: `note-${Date.now()}`,
-      type: 'note',
-      x: 400 + Math.random() * 200,
-      y: 200 + Math.random() * 200,
-      content: noteText,
-      status: 'review'
-    };
-    
-    setCanvasAssets(prev => [...prev, newNote]);
-    setNoteText('');
-    setShowNoteInput(false);
-  playSound('toggle');
-    toast.success('Note added to canvas');
-  };
-
-  // Recompute incoherences: simple all-pairs between images and notes
-  // Connection id format: `${imageId}::${noteId}`
-  const recomputeIncoherences = (assetsList: CanvasAsset[]) => {
-    const imageAssets = assetsList.filter(a => a.type === 'image');
-    const noteAssets = assetsList.filter(a => a.type === 'note');
-    const alerts: string[] = [];
-    for (const img of imageAssets) {
-      for (const note of noteAssets) {
-        try {
-          const res = cognitiveCore.checkCoherence({ aesthetics: img.content }, note.content as string) as { level?: string; message?: string };
-          if (res && res.level === 'warning') {
-            alerts.push(`${img.id}::${note.id}`);
-          }
-        } catch (e) {
-          // ignore
-        }
-      }
-    }
-    setInconsistentConnections(alerts);
-  };
-
-  // Update recompute on assets change
   useEffect(() => {
-    recomputeIncoherences(canvasAssets);
+    fetchTemplates();
+  }, [fetchTemplates]);
+
+  const filtered = useMemo(() => filterAssets(generatedAssets || [], query, typeFilter), [generatedAssets, query, typeFilter]);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      const newTemplate: GeneratedImage = {
+        id: `uploaded_${Date.now()}`,
+        url: base64String,
+        type: 'uploaded',
+        alt: file.name,
+        prompt: `uploaded:${file.name}`,
+        timestamp: new Date()
+      };
+      addTemplates([newTemplate]);
+      // clear the input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // Persist and restore canvasAssets
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(CANVAS_STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as CanvasAsset[];
+        setCanvasAssets(parsed || []);
+      }
+    } catch (e) {
+      // noop
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(CANVAS_STORAGE_KEY, JSON.stringify(canvasAssets));
+    } catch (e) {
+      // noop
+    }
   }, [canvasAssets]);
 
-  const handleStatusChange = (assetId: string, status: AssetStatus) => {
-    setCanvasAssets(prev => prev.map(asset => 
-      asset.id === assetId ? { ...asset, status } : asset
-    ));
-  playSound(status === 'approved' ? 'success' : 'toggle');
-  };
+  // dnd handlers
+  function DraggableThumb({ id, children }: { id: string; children: React.ReactNode }) {
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id });
+    const style = {
+      cursor: 'grab',
+      opacity: isDragging ? 0.6 : 1,
+      transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined
+    } as React.CSSProperties;
+    return (
+      <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
+        {children}
+      </div>
+    );
+  }
 
-  const handleExportCampaign = () => {
-  playSound('success');
-    toast.success('🚀 Campaign Exported & Integrated', {
-      description: 'Task created in Asana, notification sent to Slack, assets uploaded to Google Drive'
+  function DroppableCanvas({ children }: { children: React.ReactNode }) {
+    const { isOver, setNodeRef } = useDroppable({ id: 'canvas-droppable' });
+    return (
+      <div ref={(el) => { setNodeRef(el); canvasRef.current = el; }} style={{ width: '100%', height: '100%' }} data-droppable-is-over={isOver}>
+        {children}
+      </div>
+    );
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    const { active } = event;
+    setActiveId(String(active.id));
+    // attach pointermove to capture client coords while dragging
+    const onPointerMove = (ev: PointerEvent) => {
+      lastPointer.current = { x: ev.clientX, y: ev.clientY };
+    };
+    window.addEventListener('pointermove', onPointerMove);
+  // store listener so we can remove it on end
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (window as any).__cv_onPointerMove = onPointerMove;
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    // remove pointer listener
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const up = (window as any).__cv_onPointerMove;
+    if (up) {
+      window.removeEventListener('pointermove', up);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (window as any).__cv_onPointerMove;
+    }
+    setActiveId(null);
+
+    if (!over) return;
+    if (String(over.id) !== 'canvas-droppable') return;
+    const templateId = String(active.id);
+    // compute position relative to canvasRef using lastPointer
+    try {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (!rect) {
+        // fallback
+        const newInstance: CanvasAsset = { id: `instance_${Date.now()}`, templateId, x: 50, y: 50 };
+        setCanvasAssets(prev => [...prev, newInstance]);
+        return;
+      }
+      const pointer = lastPointer.current || { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      // place center of image at pointer
+      const imgW = 120;
+      const imgH = 90;
+      const x = Math.round(pointer.x - rect.left - imgW / 2);
+      const y = Math.round(pointer.y - rect.top - imgH / 2);
+      const newInstance: CanvasAsset = { id: `instance_${Date.now()}`, templateId, x, y };
+      setCanvasAssets(prev => [...prev, newInstance]);
+    } catch (e) {
+      const newInstance: CanvasAsset = { id: `instance_${Date.now()}`, templateId, x: 50, y: 50 };
+      setCanvasAssets(prev => [...prev, newInstance]);
+    }
+  }
+
+  // When clicking an image instance on the canvas, open the AI actions panel
+  function handleCanvasImageClick(instId: string) {
+    setSelectedInstanceId(instId);
+    const inst = canvasAssets.find(c => c.id === instId);
+    if (inst) {
+  const tmpl = (generatedAssets || []).find((g: GeneratedImage) => g.id === inst.templateId);
+      if (tmpl) {
+        // set selected image in global store (for existing modals)
+        setSelectedImage(tmpl);
+      }
+    }
+  }
+
+  // Simulate image-to-video locally using canvas + MediaRecorder.
+  // Returns a Blob (video) so the frontend can upload it to a persistence endpoint.
+  async function simulateImageToVideo(dataUrl: string, duration = 4000): Promise<Blob> {
+    return new Promise((resolve, reject) => {
+      try {
+        const canvas = document.createElement('canvas');
+        const width = 1280;
+        const height = 720;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d')!;
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = dataUrl;
+
+        img.onload = () => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const stream = (canvas as any).captureStream(30);
+          const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+          const chunks: BlobPart[] = [];
+          recorder.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+          recorder.onstop = () => {
+            const blob = new Blob(chunks, { type: 'video/webm' });
+            resolve(blob);
+          };
+
+          const fps = 30;
+          const totalFrames = Math.floor((duration / 1000) * fps);
+
+          let frame = 0;
+          function drawFrame() {
+            const t = frame / Math.max(1, totalFrames - 1);
+            // zoom from 1.05 -> 1.0
+            const zoom = 1.05 - 0.05 * t;
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+            const iw = img.width;
+            const ih = img.height;
+            // compute draw size while preserving aspect
+            const arImg = iw / ih;
+            const arCanvas = width / height;
+            let drawW = width;
+            let drawH = height;
+            if (arImg > arCanvas) {
+              drawH = height;
+              drawW = drawH * arImg;
+            } else {
+              drawW = width;
+              drawH = drawW / arImg;
+            }
+            drawW *= zoom;
+            drawH *= zoom;
+            const dx = (width - drawW) / 2;
+            const dy = (height - drawH) / 2;
+            ctx.drawImage(img, dx, dy, drawW, drawH);
+
+            // subtle vignette
+            const grad = ctx.createRadialGradient(width/2, height/2, Math.min(width,height)/8, width/2, height/2, Math.max(width,height)/1.1);
+            grad.addColorStop(0, 'rgba(0,0,0,0)');
+            grad.addColorStop(1, 'rgba(0,0,0,0.25)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0,0,width,height);
+
+            frame++;
+            if (frame <= totalFrames) {
+              // schedule next frame
+              setTimeout(() => requestAnimationFrame(drawFrame), 1000 / fps);
+            } else {
+              // stop after slight delay to ensure last frame captured
+              setTimeout(() => recorder.stop(), 150);
+            }
+          }
+
+          recorder.start(100);
+          drawFrame();
+        };
+        img.onerror = (err) => reject(err);
+      } catch (e) {
+        reject(e);
+      }
     });
-  };
-
-  // Setup sensors for better accessibility and fluid drag
-  const pointerSensor = useSensor(PointerSensor, { activationConstraint: { distance: 5 } });
-  const keyboardSensor = useSensor(KeyboardSensor);
-  const sensors = useSensors(pointerSensor, keyboardSensor);
+  }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-screen bg-background text-foreground">
-      {/* Background Effects */}
-      <div className="fixed inset-0 bg-gradient-glow opacity-20 pointer-events-none" />
-      
-  <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <div className="relative z-10 h-screen flex">
-          {/* Asset Sidebar */}
-          <div className="w-80 bg-card/50 backdrop-blur-xl border-r border-border/50 p-4 overflow-y-auto">
-            <div className="space-y-4">
-              {/* Header */}
-              <div className="flex items-center gap-3">
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                  <Button variant="ghost" size="sm" onClick={() => { window.history.back(); playSound('toggle'); }} aria-label="Go back">
-                    <ArrowLeft className="w-4 h-4" />
-                  </Button>
-                </motion.div>
-                <div>
-                  <h1 className="font-bold text-lg">Campaign Canvas</h1>
-                  <p className="text-xs text-muted-foreground">Collaborative Campaign Planning</p>
-                </div>
-              </div>
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="flex h-full" data-testid="campaign-canvas">
+        <aside className="w-80 border-r p-4" aria-label="Sidebar">
+        <h3 className="font-semibold mb-2">Assets</h3>
+        <div className="mb-2 text-sm">Assets: <span>{generatedAssets.length}</span></div>
 
-              {/* User Role Badge */}
-              <Badge variant="outline" className="border-primary/30">
-                {currentUserRole} Mode
-              </Badge>
+        <div className="mb-2">
+          <input
+            id="upload-asset-input"
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            onChange={handleFileChange}
+            className="hidden"
+          />
+          <label htmlFor="upload-asset-input" className="inline-block px-3 py-1 bg-slate-100 rounded cursor-pointer">Subir asset</label>
+        </div>
 
-              {/* Available Assets */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold">Generated Assets</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {assetsToShow.map((image) => (
-                    <div key={image.id}>
-                      <GalleryCard image={image} className="h-20" />
-                      {/* keep draggable wrapper for DnD by using DraggableAsset for drag operations */}
-                      <DraggableAsset key={`draggable-${image.id}`} image={{ id: image.id, url: image.url, prompt: image.prompt }} />
+        <div className="mb-2">
+          <input placeholder="Buscar..." value={query} onChange={e => setQuery(e.target.value)} className="w-full p-1 border rounded" />
+        </div>
+
+        <div className="mb-3 text-sm">
+          <label className="mr-2"><input type="radio" name="typeFilter" checked={typeFilter === 'all'} onChange={() => setTypeFilter('all')} /> Todos</label>
+          <label className="mx-2"><input type="radio" name="typeFilter" checked={typeFilter === 'generated'} onChange={() => setTypeFilter('generated')} /> Generados</label>
+          <label className="mx-2"><input type="radio" name="typeFilter" checked={typeFilter === 'uploaded'} onChange={() => setTypeFilter('uploaded')} /> Subidos</label>
+        </div>
+
+        <div className="overflow-auto max-h-[60vh]">
+          {filtered.length === 0 && <div className="text-sm text-slate-500">No hay assets.</div>}
+          <ul>
+              {filtered.map(a => (
+              <li key={a.id} className="mb-2">
+                <DraggableThumb id={a.id}>
+                  <button type="button" onClick={() => setSelectedImage(a)} className="flex items-center gap-2 w-full text-left">
+                    <img src={a.url} alt={a.alt || a.id} style={{ width: 64, height: 48, objectFit: 'cover' }} />
+                    <div className="text-xs">
+                      <div>{a.alt || a.id}</div>
+                      <div className="text-slate-400">{a.prompt?.slice(0, 60)}</div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </button>
+                </DraggableThumb>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </aside>
 
-              {/* Tools */}
-              <div className="space-y-3">
-                <h3 className="text-sm font-semibold">Tools</h3>
-                
-                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.95 }}>
-                  <Button
-                    onClick={() => { setShowNoteInput(!showNoteInput); playSound('toggle'); }}
-                    variant="outline"
-                    className="w-full justify-start gap-2"
-                  >
-                    <StickyNote className="w-4 h-4" />
-                    Add Note
-                  </Button>
-                </motion.div>
-
-                {showNoteInput && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="space-y-2"
-                  >
-                    <Textarea
-                      value={noteText}
-                      onChange={(e) => setNoteText(e.target.value)}
-                      placeholder="Add campaign note..."
-                      className="min-h-20"
-                    />
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={handleAddNote}>
-                        Add
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setShowNoteInput(false)}>
-                        Cancel
-                      </Button>
-                    </div>
-                  </motion.div>
-                )}
-
-                <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.95 }}>
-                  <Button
-                    onClick={() => {
-                      // Simulate async integrations with staggered logs
-                      playSound('confirm');
-                      try {
-                        // simulate API call in demo; debug logs removed for production readiness
-                      } catch (e) { /* no-op */ }
-                      setTimeout(() => {
-                        try {
-                          // simulate webhook post; debug logs removed
-                        } catch (e) { /* no-op */ }
-                        setTimeout(() => {
-                          try {
-                            // simulate upload; debug logs removed
-                          } catch (e) { /* no-op */ }
-                          setTimeout(() => {
-                            toast.success('✅ Campaña exportada e integraciones notificadas.');
-                            playSound('success');
-                          }, 1000);
-                        }, 1500);
-                      }, 1000);
-                    }}
-                    className="w-full justify-start gap-2 bg-gradient-primary hover:shadow-glow transition-all duration-300"
-                  >
-                    <Share className="w-4 h-4" />
-                    Export & Notify
-                  </Button>
-                </motion.div>
-              </div>
-
-              {/* Campaign Stats */}
-              <div className="pt-4 border-t border-border/30 space-y-2">
-                <h3 className="text-sm font-semibold">Campaign Status</h3>
-                <div className="text-xs space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Assets:</span>
-                    <span>{canvasAssets.filter(a => a.type === 'image').length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Notes:</span>
-                    <span>{canvasAssets.filter(a => a.type === 'note').length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Approved:</span>
-                    <span className="text-green-400">
-                      {canvasAssets.filter(a => a.status === 'approved').length}
-                    </span>
-                  </div>
-                </div>
+      <main className="flex-1 p-4 relative">
+        <div id="canvas-drop-area" className="w-full h-full border-2 border-dashed flex items-center justify-center">
+          <DroppableCanvas>
+            <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+              {canvasAssets.length === 0 && <div className="text-slate-500">Canvas vacío. Arrastra assets aquí.</div>}
+              {canvasAssets.map(inst => {
+                const tmpl = (generatedAssets || []).find((g: GeneratedImage) => g.id === inst.templateId);
+                if (!tmpl) return null;
+                return (
+                  <img key={inst.id} src={tmpl.url} alt={tmpl.alt || tmpl.id} style={{ position: 'absolute', left: inst.x, top: inst.y, width: 120, height: 90, objectFit: 'cover', cursor: 'pointer' }} onClick={() => handleCanvasImageClick(inst.id)} />
+                );
+              })}
+            </div>
+          </DroppableCanvas>
+        </div>
+      </main>
+      {/* Drag overlay to show ghost while dragging */}
+      <DragOverlay>
+        {activeId ? (() => {
+    const tmpl = (generatedAssets || []).find((g: GeneratedImage) => g.id === activeId);
+          if (!tmpl) return null;
+          return <img src={tmpl.url} alt={tmpl.alt || tmpl.id} style={{ width: 120, height: 90, objectFit: 'cover', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', borderRadius: 4 }} />;
+        })() : null}
+      </DragOverlay>
+      {/* AI Actions panel (Co-Creation) */}
+      {selectedInstanceId && (() => {
+        const inst = canvasAssets.find(c => c.id === selectedInstanceId);
+        if (!inst) return null;
+  const tmpl = (generatedAssets || []).find((g: GeneratedImage) => g.id === inst.templateId);
+        if (!tmpl) return null;
+  const prompt = generateVideoPrompt(tmpl as GeneratedImage);
+        return (
+          <aside style={{ position: 'fixed', right: 12, top: 80, width: 380, maxHeight: '70vh', background: '#fff', border: '1px solid #e6e6e6', padding: 12, borderRadius: 8, overflow: 'auto', zIndex: 60 }}>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <img src={tmpl.url} alt={tmpl.alt || tmpl.id} style={{ width: 120, height: 90, objectFit: 'cover', borderRadius: 6 }} />
+              <div style={{ flex: 1 }}>
+                <h4 style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>Acciones de IA</h4>
+                <p style={{ margin: '6px 0 0 0', fontSize: 12, color: '#666' }}>{tmpl.alt || tmpl.id}</p>
               </div>
             </div>
-          </div>
-
-          {/* Canvas Area */}
-          <CanvasDropArea assets={canvasAssets} onStatusChange={handleStatusChange} onAddSuggestionNote={(assetId, suggestion) => {
-            // add suggestion as a note near the asset
-            const asset = canvasAssets.find(a => a.id === assetId);
-            const x = asset ? asset.x + 120 : 400 + Math.random() * 200;
-            const y = asset ? asset.y + 40 : 200 + Math.random() * 200;
-            const newNote: CanvasAsset = {
-              id: `note-${Date.now()}`,
-              type: 'note',
-              x,
-              y,
-              content: `${suggestion.title}: ${suggestion.description}`,
-              status: 'review'
-            };
-            setCanvasAssets(prev => [...prev, newNote]);
-            playSound('confirm');
-            toast.success('Sugerencia añadida al lienzo');
-          }} inconsistentConnections={inconsistentConnections} />
-        </div>
-      </DndContext>
-    </motion.div>
-  );
-};
-
-// Draggable Asset Component
-type SidebarImage = { id: string; url: string; prompt: string };
-const DraggableAsset = ({ image }: { image: SidebarImage }) => {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `sidebar-image-${image.id}`
-  });
-
-  const style = transform ? {
-    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-  } : undefined;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      className={`relative group cursor-grab active:cursor-grabbing transition-all ${
-        isDragging ? 'opacity-50 scale-95' : ''
-      }`}
-    >
-      <img
-        src={image.url}
-        alt={image.prompt}
-        className="w-full h-20 object-cover rounded-lg border border-border/30 group-hover:border-primary/50 transition-colors"
-      />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-        <div className="absolute bottom-1 left-1 right-1">
-          <p className="text-xs text-white line-clamp-2">{image.prompt}</p>
-        </div>
-      </div>
+            <div style={{ marginTop: 12 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, marginBottom: 6 }}>Sugerencia del Director de IA:</label>
+              <textarea readOnly rows={8} value={prompt} style={{ width: '100%', resize: 'vertical', padding: 8, fontSize: 12 }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 12, justifyContent: 'flex-end' }}>
+              <button onClick={() => setSelectedInstanceId(null)} style={{ padding: '8px 12px', background: '#f3f4f6', border: 'none', borderRadius: 6 }}>Cerrar</button>
+              <button onClick={async () => {
+                try {
+                  toast('Iniciando simulación...');
+                  const videoBlob = await simulateImageToVideo(tmpl.url);
+                  // upload to persistence endpoint
+                  const fd = new FormData();
+                  fd.append('file', videoBlob, `campaign_video_${Date.now()}.webm`);
+                  const res = await fetch('/api/save-video', { method: 'POST', body: fd });
+                  if (!res.ok) throw new Error('Upload failed');
+                  const json = await res.json();
+                  const videoUrl = json && (json.url || json.path);
+                  if (!videoUrl) throw new Error('No url returned');
+                  // save to store - attach persistent url to the template id
+                  setPreviewVideo(tmpl.id, videoUrl);
+                  toast.success('¡Tu video de campaña ha sido generado con éxito!');
+                  setSelectedInstanceId(null);
+                } catch (e) {
+                  console.error(e);
+                  toast.error('Error al generar el video.');
+                }
+              }} style={{ padding: '8px 12px', background: '#0ea5a4', color: '#fff', border: 'none', borderRadius: 6 }}>✅ Aprobar y Generar Video</button>
+            </div>
+          </aside>
+        );
+      })()}
     </div>
+    </DndContext>
   );
 };
 
-// Canvas Drop Area Component
-const CanvasDropArea = ({ 
-  assets, 
-  onStatusChange, 
-  onAddSuggestionNote,
-  inconsistentConnections
-}: { 
-  assets: CanvasAsset[];
-  onStatusChange: (id: string, status: AssetStatus) => void;
-  onAddSuggestionNote?: (assetId: string, suggestion: { id: string; title: string; description: string; confidence: number }) => void;
-  inconsistentConnections: string[];
-}) => {
-  const { setNodeRef } = useDroppable({ id: 'canvas-drop-area' });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className="flex-1 relative bg-gradient-subtle/30 overflow-hidden"
-    >
-      {/* Connections overlay: draw lines between images and notes */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none">
-        {assets.map((a) => {
-          if (a.type !== 'image') return null;
-          // find nearby notes for this image (simple: all notes)
-          return assets.filter(n => n.type === 'note').map((n) => {
-            const connId = `${a.id}::${n.id}`;
-            const x1 = a.x + 48; // rough center offset
-            const y1 = a.y + 24;
-            const x2 = n.x + 60;
-            const y2 = n.y + 12;
-            const strokeClass = inconsistentConnections.includes(connId) ? 'stroke-amber-400' : 'stroke-border/40';
-            return (
-              <g key={connId}>
-                <line x1={x1} y1={y1} x2={x2} y2={y2} strokeWidth={2} className={`${strokeClass}`} strokeLinecap="round" />
-                {inconsistentConnections.includes(connId) && (
-                  <title>{`Alerta: incoherencia detectada entre activo y nota`}</title>
-                )}
-              </g>
-            );
-          });
-        })}
-      </svg>
-      {/* Grid Background */}
-      <div 
-        className="absolute inset-0 opacity-10"
-        style={{
-          backgroundImage: `
-            linear-gradient(hsl(var(--border)) 1px, transparent 1px),
-            linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)
-          `,
-          backgroundSize: '20px 20px'
-        }}
-      />
-
-      {/* Canvas Assets */}
-      {assets.map((asset) => (
-        <CanvasAssetComponent
-          key={asset.id}
-          asset={asset}
-          onStatusChange={onStatusChange}
-          onAddSuggestionNote={onAddSuggestionNote}
-        />
-      ))}
-
-      {/* Welcome Message */}
-      {assets.length === 0 && (
-        <div className="absolute inset-0 flex items-center justify-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center"
-          >
-            <div className="w-16 h-16 bg-gradient-primary rounded-full flex items-center justify-center mx-auto mb-4 shadow-glow">
-              <Plus className="w-8 h-8 text-primary-foreground" />
-            </div>
-            <h3 className="text-xl font-bold mb-2">Start Building Your Campaign</h3>
-            <p className="text-muted-foreground mb-4 max-w-md">
-              Drag assets from the sidebar to create your collaborative campaign canvas
-            </p>
-          </motion.div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Individual Canvas Asset Component
-const CanvasAssetComponent = ({ 
-  asset, 
-  onStatusChange, 
-  onAddSuggestionNote
-}: { 
-  asset: CanvasAsset;
-  onStatusChange: (id: string, status: AssetStatus) => void;
-  onAddSuggestionNote?: (assetId: string, suggestion: { id: string; title: string; description: string; confidence: number }) => void;
-}) => {
-  // keep cognitiveCore local for quick calls
-  const localCore = cognitiveCore;
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: asset.id
-  });
-
-  const style = {
-    position: 'absolute' as const,
-    left: asset.x,
-    top: asset.y,
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-  };
-
-  const getStatusIcon = (status: AssetStatus) => {
-    switch (status) {
-      case 'approved': return <CheckCircle className="w-4 h-4 text-green-400" />;
-      case 'rejected': return <XCircle className="w-4 h-4 text-red-400" />;
-      default: return <Clock className="w-4 h-4 text-yellow-400" />;
-    }
-  };
-
-  const getStatusColor = (status: AssetStatus) => {
-    switch (status) {
-      case 'approved': return 'border-green-400/50 bg-green-400/10';
-      case 'rejected': return 'border-red-400/50 bg-red-400/10';
-      default: return 'border-yellow-400/50 bg-yellow-400/10';
-    }
-  };
-
-  return (
-    <motion.div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      className={`group cursor-grab active:cursor-grabbing ${
-        isDragging ? 'opacity-75 scale-95' : ''
-      }`}
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      whileHover={{ scale: 1.02 }}
-    >
-      <div className={`relative p-4 rounded-lg backdrop-blur-sm border-2 transition-all ${getStatusColor(asset.status)}`}>
-        {/* Asset Content */}
-        {asset.type === 'image' ? (
-          <div className="w-48 space-y-2">
-            <img
-              src={asset.imageUrl}
-              alt={asset.content}
-              className="w-full h-32 object-cover rounded-md"
-            />
-            <p className="text-sm text-foreground line-clamp-2">{asset.content}</p>
-            {/* Floating IA action buttons */}
-            <div className="absolute -right-10 top-0 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button size="sm" variant="outline" className="text-xs px-2" onClick={() => {
-                const suggestions = localCore.suggestNextSteps(asset.id, { assets: [{ id: asset.id, name: asset.content, aesthetics: asset.content }] });
-                if (suggestions && suggestions[0]) onAddSuggestionNote?.(asset.id, suggestions[0]);
-              }}>+ Sugerir</Button>
-              <Button size="sm" variant="outline" className="text-xs px-2" onClick={() => {
-                const suggestions = localCore.suggestNextSteps(asset.id, { assets: [{ id: asset.id, name: asset.content, aesthetics: asset.content }] });
-                if (suggestions && suggestions[1]) onAddSuggestionNote?.(asset.id, suggestions[1]);
-              }}>+ Crear Copy</Button>
-              <Button size="sm" variant="outline" className="text-xs px-2" onClick={() => {
-                const suggestions = localCore.suggestNextSteps(asset.id, { assets: [{ id: asset.id, name: asset.content, aesthetics: asset.content }] });
-                if (suggestions && suggestions[2]) onAddSuggestionNote?.(asset.id, suggestions[2]);
-              }}>+ Audiencia</Button>
-            </div>
-          </div>
-        ) : (
-          <div className="w-48 p-3 bg-card/80 rounded-md">
-            <p className="text-sm text-foreground">{asset.content}</p>
-          </div>
-        )}
-
-        {/* Status Controls */}
-        <div className="flex items-center justify-between mt-3">
-          <div className="flex items-center gap-1">
-            {getStatusIcon(asset.status)}
-            <span className="text-xs capitalize">{asset.status}</span>
-          </div>
-          
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onStatusChange(asset.id, 'approved')}
-              className="h-6 w-6 p-0 hover:bg-green-400/20"
-            >
-              <CheckCircle className="w-3 h-3" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onStatusChange(asset.id, 'review')}
-              className="h-6 w-6 p-0 hover:bg-yellow-400/20"
-            >
-              <Clock className="w-3 h-3" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onStatusChange(asset.id, 'rejected')}
-              className="h-6 w-6 p-0 hover:bg-red-400/20"
-            >
-              <XCircle className="w-3 h-3" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
+export { CampaignCanvas };
+export default CampaignCanvas;

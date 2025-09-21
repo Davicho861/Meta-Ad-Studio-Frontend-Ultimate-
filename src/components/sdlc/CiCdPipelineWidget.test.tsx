@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { vi } from 'vitest';
+import { act } from 'react';
 import CiCdPipelineWidget from './CiCdPipelineWidget';
 
 const mockResponse = {
@@ -38,8 +39,10 @@ describe('CiCdPipelineWidget', () => {
     
     // Make retry succeed
     g.fetch = vi.fn(() => Promise.resolve({ json: () => Promise.resolve(mockResponse) })) as unknown as typeof fetch;
-    screen.getByText('Reintentar').click();
-  await waitFor(() => expect(screen.getByText(/Overall:/)).toBeInTheDocument());
+    await act(async () => {
+      screen.getByText('Reintentar').click();
+    });
+    await waitFor(() => expect(screen.getByText(/Overall:/)).toBeInTheDocument());
   const overallEl = screen.getByText(/Overall:/).closest('div')!.querySelector('strong');
   expect(overallEl?.textContent).toContain('In Progress');
   });

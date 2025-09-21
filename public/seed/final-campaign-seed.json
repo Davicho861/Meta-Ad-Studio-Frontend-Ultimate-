@@ -1,0 +1,11 @@
+{
+  "templates": [{
+    "id": "coca-cola-synced-sip-final",
+    "type": "generated",
+    "prompt": "Campaña 'El Brindis Sincronizado' para Coca-Cola en Shibuya.",
+    "url": "/output/campaign_image_edited.jpg",
+    "previewVideoUrl": "/output/coca-cola_final_video.mp4",
+    "alt": "Campaña de Coca-Cola en las pantallas de Shibuya.",
+    "credit": "Co-creado con el Copiloto de IA"
+  }]
+}

@@ -39,19 +39,7 @@ export const saveLearnings = async (learnings: string[]): Promise<void> => {
       } catch (e) {
         // ignore network errors
       }
-      // Mirror items into sessionStorage for the client/test environment so tests can assert on them.
-      try {
-        if (typeof window !== 'undefined' && typeof window.sessionStorage !== 'undefined') {
-          const key = 'mock_agency_actions_v1';
-          const raw = window.sessionStorage.getItem(key);
-          const existing = raw ? JSON.parse(raw) : [];
-          const now = new Date().toISOString();
-          const stored = existing.concat(learnings.map((p) => ({ action: 'save', prompt: String(p), at: now })));
-          window.sessionStorage.setItem(key, JSON.stringify(stored));
-        }
-      } catch (e) {
-        // ignore sessionStorage write errors
-      }
+    // No client-side mirroring: backend is the single source of truth.
       return;
     }
   } catch (e) {

@@ -54,10 +54,20 @@ jobs:
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
 
-    - name: Run Playwright E2E + Visual Tests
-      run: npx playwright test --update-snapshots=false
+    - name: Run E2E Tests with High-Fidelity API Server
+      run: npm run test:e2e
       env:
         CI: true
+
+    - name: Upload Playwright artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-artifacts
+        path: |
+          test-results/**
+          playwright-report/**
+          .playwright/**
 
     - name: Package release zip
       run: |
@@ -67,3 +77,40 @@ jobs:
       with:
         name: meta-ad-studio-platform-v1.0.zip
         path: meta-ad-studio-platform-v1.0.zip
+
+  e2e-demo-validation:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js 20.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+        cache: 'npm'
+
+    - name: Install system deps (ffmpeg)
+      run: |
+        sudo apt-get update -y
+        sudo apt-get install -y ffmpeg
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps
+
+    - name: Run full local demo orchestration (generate + e2e)
+      run: bash scripts/run-final-demo.sh
+
+    - name: Upload demo artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: demo-artifacts
+        path: |
+          output/local_generated.mp4
+          output/FINAL_DEMO_SUCCESS.png
+          output/FINAL_DEMO_CERT.txt
+          test-results/**

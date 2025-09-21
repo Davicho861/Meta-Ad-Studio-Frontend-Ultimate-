@@ -13,7 +13,15 @@
     "lint": "eslint .",
     "test": "vitest",
     "check:legacy-bridges": "node ./scripts/check-legacy-bridges.cjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "serve:dist": "serve -s dist -l 5178",
+    "e2e": "bash ./scripts/run-e2e.sh",
+    "dev:api": "node scripts/mock-api/server.cjs",
+    "test:e2e:server": "npm-run-all --parallel dev:api \"dev -- --port 5173 --strictPort\"",
+    "test:e2e": "cross-env PREVIEW_URL=http://localhost:5173 npx playwright test"
+  },
+  "bin": {
+    "run-final-demo": "./scripts/run-final-demo.sh"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -88,14 +96,20 @@
     "@types/testing-library__jest-dom": "^5.14.9",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
+    "cors": "^2.8.5",
+    "cross-env": "^10.0.0",
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
+    "express": "^5.1.0",
     "globals": "^15.15.0",
     "jsdom": "^27.0.0",
     "lovable-tagger": "^1.1.9",
     "msw": "^2.11.2",
+    "multer": "^2.0.2",
+    "npm-run-all": "^4.1.5",
     "postcss": "^8.5.6",
+    "serve": "^14.2.5",
     "sharp": "^0.32.4",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",

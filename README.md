@@ -58,6 +58,16 @@ Demostración de alta fidelidad del prototipo "Meta Ad Studio" construido con Re
 ## Características
 - Interfaz centrada en prompt-guided ad creation
 - Sonidos UI integrados (Web Audio / HTMLAudioElement)
+
+## Proyecto Atlas — Plataforma Agnóstica de IA y Sistema de Créditos
+
+Este repositorio ahora incluye una capa de abstracción denominada "Proyecto Atlas" que transforma la integración de IA de un acoplamiento directo a un orquestador agnóstico de proveedores.
+
+-- Backend-proxy orquestador (deprecated): anteriormente se soportaban providers como `runwayml`, `stabilityai` y `huggingface`. El repo ahora prioriza un flujo local-first con providers simulados en `src/lib/ai-providers`.
+- Sistema de créditos: cada usuario comienza con 2 créditos gratuitos. Las generaciones de video consumen 1 crédito. El estado se mantiene en el store (`src/store/useStore.ts`) y se simula en `sessionStorage` para el desarrollo y las pruebas.
+- UI: el `FullScreenModal` ahora muestra el saldo de créditos, permite seleccionar el motor de IA y evita generar cuando no hay créditos disponibles.
+
+Ver `ARCHITECTURE.md` para más detalles sobre la capa de abstracción y el flujo de orquestación.
 - Modal inmersivo con video local
 - Mock data para insights, tendencias e imágenes
 - Tests automatizados con Vitest y Testing Library

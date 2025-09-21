@@ -33,14 +33,13 @@ describe('persistence-adapter (consent -> network)', () => {
   });
 
   it('calls fetch when saving learnings', async () => {
+  type FetchMock = (input: RequestInfo, init?: RequestInit) => Promise<Response>;
+  const fetchSpy = vi.spyOn(globalThis as unknown as { fetch: FetchMock }, 'fetch').mockResolvedValue(({ ok: true } as unknown) as Response);
   await saveLearnings(['x','y']);
-  // handler stores into sessionStorage; verify there are entries
+  expect(fetchSpy).toHaveBeenCalled();
+  // No client-side mirroring expected anymore
   const raw = typeof window !== 'undefined' ? window.sessionStorage.getItem('mock_agency_actions_v1') : null;
-  expect(raw).not.toBeNull();
-  const parsed = raw ? JSON.parse(raw) : [];
-  expect(Array.isArray(parsed)).toBe(true);
-  // last entries equal our items
-  const prompts = parsed.map((p: { prompt?: string }) => p.prompt).slice(-2) as string[];
-  expect(prompts).toEqual(['x', 'y']);
+  expect(raw).toBeNull();
+  fetchSpy.mockRestore();
   });
 });

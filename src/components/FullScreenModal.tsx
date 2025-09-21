@@ -1,11 +1,13 @@
+import type { ProviderModule } from '@/lib/ai-providers';
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { useStore } from '@/store/useStore';
+import { useStore, getAppStore } from '@/store/useStore';
 import type { GeneratedImage } from '@/lib/mockData';
 import { useSound } from '@/hooks/useSound';
 import { toast } from 'sonner';
+import providersList from '@/lib/ai-providers';
 import { 
   X, 
   Shuffle, 
@@ -20,13 +22,16 @@ import {
 import cognitiveCore from '@/lib/cognitive-core';
 
 export const FullScreenModal = () => {
-  const { selectedImage, setSelectedImage, setCanvasState, setGeneratedAssets } = useStore();
+  const { selectedImage, setSelectedImage, setCanvasState, setGeneratedAssets, credits, deductCredit } = useStore();
+  const { modalTask, setModalTask } = useStore();
   const { playSound } = useSound();
   const [brandApplied, setBrandApplied] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
   const [optimized, setOptimized] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'edit' | 'animate'>('overview');
+  const [selectedProvider, setSelectedProvider] = useState<string>('stability');
+  const [taskType, setTaskType] = useState<'text-to-image' | 'image-to-video' | 'text-to-audio'>('image-to-video');
   const [selectionRect, setSelectionRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [isApplyingEdit, setIsApplyingEdit] = useState(false);
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
@@ -35,6 +40,19 @@ export const FullScreenModal = () => {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // When modal is opened via store with a preselected task, apply it
+  useEffect(() => {
+    if (selectedImage && modalTask) {
+      // ensure animate tab and task type are set
+      if (modalTask === 'image-to-video') {
+        setActiveTab('animate');
+        setTaskType('image-to-video');
+      }
+      // reset modalTask after consuming
+      try { setModalTask(null); } catch (e) { void e; }
+    }
+  }, [selectedImage, modalTask, setModalTask]);
 
   if (!selectedImage) return null;
   if (!isClient) return null;
@@ -125,6 +143,89 @@ export const FullScreenModal = () => {
     });
   };
 
+  // Extracted handler for generating videos/images/audio to keep JSX clean and avoid nested syntax issues
+  const handleGenerateVideo = async () => {
+    // Check credits from store
+    if (!credits || credits <= 0) {
+      toast.error('Necesitas más créditos para generar videos.');
+      return;
+    }
+
+    setIsGeneratingVideo(true);
+    setVideoProgress(0);
+
+    try {
+      // Local-first: call the unified mock API route. External proxy removed.
+      const qs = `?provider=${encodeURIComponent(selectedProvider)}&task=${encodeURIComponent(taskType)}`;
+      const resp = await fetch(`/api/generate${qs}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-provider': selectedProvider, 'x-task': taskType },
+        body: JSON.stringify({ provider: selectedProvider, imageId: selectedImage.id, task: taskType, prompt: selectedImage.prompt })
+      });
+
+      if (resp.status === 402) {
+        await resp.text();
+        toast.error('No hay créditos suficientes.');
+        setIsGeneratingVideo(false);
+        return;
+      }
+
+  /* eslint-disable @typescript-eslint/no-explicit-any -- legacy mock API response handling */
+  let data: any = undefined;
+  try { data = await resp.json(); } catch (err) {
+        try { const txt = await resp.text(); data = JSON.parse(txt); } catch (e) { data = undefined; }
+      }
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+
+      // apply credits if present
+      if (data && typeof data.newCredits === 'number') {
+        const newCreditsImmediate = data.newCredits;
+        try { (((window as unknown) as Record<string, unknown>).__LAST_NEW_CREDITS__ = newCreditsImmediate); } catch (e) { void e; }
+        try { useStore.setState({ credits: newCreditsImmediate }); } catch (e) { void e; }
+        try { useStore.getState().setCredits(newCreditsImmediate); } catch (e) { void e; }
+        try { getAppStore().setState({ credits: newCreditsImmediate }); } catch (e) { void e; }
+      }
+
+      const videoUrl = data && (data.previewVideoUrl || data.url || (data.output && (data.output.url || data.output)) || (data.output && data.output[0] && data.output[0].url));
+
+      if (videoUrl) {
+        // create new template
+        try {
+          const md = await import('@/lib/mockData.ts');
+          const newId = `video_${selectedImage.id}_${Date.now()}`;
+          const newTemplate: GeneratedImage = { ...selectedImage, id: newId, previewVideoUrl: videoUrl, timestamp: new Date(), type: 'uploaded' };
+          md.addTemplate(newTemplate);
+          try { (await import('@/store/useStore')).getAppStore()().fetchTemplates(); } catch (e) { void e; }
+        } catch (e) { void e; }
+
+        // gentle progress animation
+        const start = Date.now();
+        let progress = 0;
+        while (Date.now() - start < 3000) {
+          // bump progress smoothly
+          await new Promise(r => setTimeout(r, 120));
+          progress = Math.min(95, progress + Math.floor(Math.random() * 12) + 6);
+          setVideoProgress(progress);
+        }
+        setVideoProgress(100);
+        toast.success(`¡Video generado con ${data.provider || 'desconocido'}!`);
+      } else if (data && data.status && data.status === 'pending') {
+        // pending: the proxy returned early; show pending message and keep UI waiting
+        toast.info('La generación está en curso, espera unos segundos...');
+        // animate modest progress
+        let p = 10;
+        while (p < 90) { await new Promise(r => setTimeout(r, 500)); p += 10; setVideoProgress(p); }
+        setVideoProgress(100);
+      } else {
+        toast.error('La generación falló.');
+      }
+    } catch (e) {
+      toast.error('Error al generar el video.');
+    } finally {
+      setIsGeneratingVideo(false);
+    }
+  };
+
   return createPortal(
     <AnimatePresence>
       <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm">
@@ -189,8 +290,8 @@ export const FullScreenModal = () => {
                     This element is only added in DEV or when window.__E2E__ is set to true so it does not
                     affect production. Tests can reliably wait for this element. */}
                 {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  (typeof window !== 'undefined' && ((window as any).__E2E__ || import.meta.env.DEV)) && selectedImage.previewVideoUrl && (
+                  // Expose a small E2E hook without using `any`
+                  (typeof window !== 'undefined' && ((((window as unknown) as { __E2E__?: boolean }).__E2E__) || import.meta.env.DEV)) && selectedImage.previewVideoUrl && (
                     <div className="absolute bottom-4 left-4 w-36 h-20 z-50">
                       <video data-testid="e2e-preview-video" src={selectedImage.previewVideoUrl} muted playsInline preload="metadata" className="w-full h-full object-cover rounded" />
                     </div>
@@ -357,6 +458,31 @@ export const FullScreenModal = () => {
                   <h3 className="text-sm font-semibold">Animar Imagen (IA)</h3>
                   <p className="text-xs text-muted-foreground mb-2">Selecciona un estilo de movimiento y genera un videoclip contextual.</p>
 
+                  <div className="mb-3 p-2 border rounded bg-card/30">
+                    <label className="text-xs font-medium">Créditos restantes: {credits}</label>
+                    <div className="mt-2">
+                      <label className="text-xs">Tarea</label>
+                      <div className="flex gap-2 mt-1 mb-2">
+                        <button onClick={() => setTaskType('text-to-image')} className={`px-2 py-1 rounded ${taskType==='text-to-image' ? 'bg-primary text-white' : 'bg-card/30'}`}>Texto → Imagen</button>
+                        <button onClick={() => setTaskType('image-to-video')} className={`px-2 py-1 rounded ${taskType==='image-to-video' ? 'bg-primary text-white' : 'bg-card/30'}`}>Imagen → Video</button>
+                        <button onClick={() => setTaskType('text-to-audio')} className={`px-2 py-1 rounded ${taskType==='text-to-audio' ? 'bg-primary text-white' : 'bg-card/30'}`}>Texto → Audio</button>
+                      </div>
+
+                      <label className="text-xs">Proveedor</label>
+                      <div className="flex flex-col mt-1">
+                          {providersList.filter((p): p is ProviderModule => p.capabilities?.includes(taskType)).map((p) => {
+                            const mod = p;
+                            return (
+                              <label key={mod.name} className="inline-flex items-center mt-1">
+                                <input type="radio" name="provider" value={mod.name} checked={selectedProvider===mod.name} onChange={() => setSelectedProvider(mod.name)} className="mr-2"/>
+                                {mod.name}
+                              </label>
+                            );
+                          })}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 gap-2 mb-3">
                     <div className="flex gap-2">
                       <button onClick={() => toast.info('Paneo Sutil seleccionado')} className="px-2 py-1 rounded border">Paneo Sutil</button>
@@ -367,38 +493,11 @@ export const FullScreenModal = () => {
 
                   <div className="flex gap-2" data-testid="animate-controls">
                     <Button
-                      onClick={async () => {
-                        setIsGeneratingVideo(true);
-                        setVideoProgress(0);
-                        // simulate progressive generation
-                        for (let p = 1; p <= 100; p += 7) {
-                          await new Promise(r => setTimeout(r, 120));
-                          setVideoProgress(p);
-                        }
-
-                        // after generation, attach a prepared video and show
-                        const videoUrl = '/videos/nexus_preview.mp4';
-                        try {
-                          const md = await import('@/lib/mockData.ts');
-                          // create a new template version with previewVideoUrl
-                          const newId = `video_${selectedImage.id}_${Date.now()}`;
-                          const newTemplate: GeneratedImage = {
-                            ...selectedImage,
-                            id: newId,
-                            previewVideoUrl: videoUrl,
-                            timestamp: new Date(),
-                            type: 'uploaded'
-                          };
-                          md.addTemplate(newTemplate);
-                          try { (await import('@/store/useStore')).getAppStore()().fetchTemplates(); } catch { /* noop */ }
-                        } catch (e) { /* noop */ }
-
-                        setIsGeneratingVideo(false);
-                        setVideoProgress(100);
-                        toast.success('¡Video generado con éxito!');
-                      }}
+                      onClick={handleGenerateVideo}
                       data-testid="generate-video"
                       className="w-full bg-gradient-primary"
+                      disabled={!credits || credits <= 0}
+                      title={!credits || credits <= 0 ? 'Necesitas más créditos para generar videos.' : ''}
                     >
                       Generar Video (IA)
                     </Button>
