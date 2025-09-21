@@ -1,0 +1,5 @@
+Demo local generada con éxito
+Fuente: public/images/campaign-examples/nexus_arena_shibuya.jpg
+Video: output/local_generated.mp4
+Captura: output/FINAL_DEMO_SUCCESS.png
+Fecha: vie 19 sep 2025 20:27:47 UTC

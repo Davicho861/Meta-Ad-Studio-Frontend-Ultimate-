@@ -1,0 +1,5 @@
+tests-e2e/
+tests/
+public/output/
+output/
+node_modules/

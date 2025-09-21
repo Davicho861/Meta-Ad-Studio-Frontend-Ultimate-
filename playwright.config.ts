@@ -10,31 +10,28 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
   use: {
-  baseURL: 'http://localhost:5174',
-  headless: true,
+  baseURL: 'http://localhost:5173',
+  headless: false,
     viewport: { width: 1280, height: 720 },
     actionTimeout: 0,
     ignoreHTTPSErrors: true,
-    // Ensure the app runs in E2E test mode: page script sets window.__E2E__ early
     launchOptions: {
       // empty for now
     },
-    // Inject a script before any other scripts to flag E2E mode for the app
-    // Note: using addInitScript in the test runner is done via the test setup; include here for global effect
     contextOptions: {
-      // see Playwright docs: addInitScript is applied per page via fixtures; we'll add it via projects setup in tests
+      // global context options
     },
-  // Habilitar video condicionalmente si la variable de entorno PLAYWRIGHT_RECORD_VIDEO está establecida a "1"
-  video: process.env.PLAYWRIGHT_RECORD_VIDEO === '1' ? 'on' : undefined,
+  // Always record video for the demo
+  video: 'on',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
-  // Build first so preview serves the production bundle (more deterministic)
-  command: 'npm run build && npm run preview -- --port 5174',
-    port: 5174,
-    reuseExistingServer: true,
+    // Orchestrate the mock API and Vite dev server in parallel for E2E
+    command: 'npm run test:e2e:server',
+    url: 'http://localhost:5173',
+    reuseExistingServer: !process.env.CI,
     timeout: 120000,
   },
 });

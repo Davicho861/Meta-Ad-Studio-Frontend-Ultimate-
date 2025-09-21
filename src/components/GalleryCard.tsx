@@ -20,11 +20,9 @@ export default function GalleryCard({ image, className = '', onClick }: Props) {
   // Attempt to play preview video on hover
       // try to play; some browsers require gesture but hover often allows muted autoplay
       const playPromise = video.play();
-      if (playPromise && playPromise.catch) {
-        playPromise.catch((err: unknown) => {
-          console.debug('video.play() failed on hover', err);
-        });
-      }
+            if (playPromise && playPromise.catch) {
+            playPromise.catch((err: unknown) => { /* noop (debug removed) */ });
+            }
     } else {
       try {
         video.pause();

@@ -45,8 +45,8 @@ const CentralCanvas: React.FC = () => {
               const json = await res.json();
               if (mounted) setLottieData(json);
             }
-          } catch (e) { console.debug('lottie fetch error', e); }
-        } catch (e) { console.debug('lottie import error', e); }
+          } catch (e) { /* noop (debug removed) */ }
+        } catch (e) { /* noop (debug removed) */ }
     })();
     return () => { mounted = false; };
   }, []);

@@ -11,8 +11,8 @@ const AssetCheckerBanner: React.FC = () => {
       try {
         const r = await checkCampaignAssetsReport();
         if (mounted && r) setReport(r);
-      } catch (e) {
-        console.debug('AssetCheckerBanner failed', e);
+        } catch (e) {
+        /* noop (debug removed) */
       }
     })();
     return () => { mounted = false; };

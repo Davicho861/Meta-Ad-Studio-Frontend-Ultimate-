@@ -54,3 +54,17 @@ Este documento resume la pila tecnológica, la organización del código y el fl
 - Observability: integrate error reporting (Sentry) and performance monitoring for production.
 - Security: guard `window.__APP_STORE__` attachment behind env var before shipping to public.
 
+## Proyecto Atlas — Orquestador de Proveedores de IA y Sistema de Créditos
+
+Se implementó una capa de abstracción para integrar múltiples proveedores de IA sin acoplar el front-end a APIs propietarias.
+
+- Endpoint unificado: `/api/generate-video` actúa como orquestador. El front-end envía { provider, imageId } y el orquestador decide qué proveedor simular.
+- Simulación de proveedores: en desarrollo y pruebas MSW devuelve videos distintos para `runwayml`, `stabilityai` y `huggingface` (`/videos/placeholders/*.mp4`).
+- Sistema de créditos: la lógica de crédito se encuentra en el store (`credits`, `initializeCredits`, `deductCredit`). El orquestador valida créditos simulados en `sessionStorage` y devuelve 402 cuando faltan.
+- Flujo control: el front-end siempre interactúa con la capa de abstracción. Después de una respuesta satisfactoria, el front-end descuenta un crédito localmente y actualiza la galería con la plantilla de video generada.
+
+Próximos pasos para producción:
+- Sustituir las simulaciones MSW por adaptadores reales que implementen la misma interfaz (provider agnostic): crear módulos `providers/runwayml.ts`, `providers/stabilityai.ts`, `providers/huggingface.ts` que expongan una función `generateVideo(payload)`.
+- Implementar un backend real que autentique, gestione cuotas y realice conciliación de créditos en una base de datos por usuario.
+- Añadir métricas y telemetría en el orquestador para monitorizar coste por proveedor y latencia.
+

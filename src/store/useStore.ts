@@ -38,12 +38,20 @@ interface AppState {
   // Selected image for modal
   selectedImage: GeneratedImage | null;
   setSelectedImage: (image: GeneratedImage | null) => void;
+  // Modal task preselection (e.g. 'image-to-video')
+  modalTask: string | null;
+  setModalTask: (task: string | null) => void;
   // Newly generated single result (preview before saving as template)
   newlyGeneratedImage: GeneratedImage | null;
   setNewlyGeneratedImage: (image: GeneratedImage | null) => void;
   // Trigger token to initiate generation flow from TopBar
   generationTrigger: number | null;
   setGenerationTrigger: (token: number | null) => void;
+  // Credits system
+  credits: number;
+  initializeCredits: () => void;
+  deductCredit: () => void;
+  setCredits: (n: number) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -64,7 +72,7 @@ export const useStore = create<AppState>((set) => ({
   // Convert timestamps
   parsed.forEach(p => { if (p.timestamp && typeof p.timestamp === 'string') p.timestamp = new Date(p.timestamp as unknown as string); });
       set({ generatedAssets: parsed });
-    } catch (e) { console.debug('fetchTemplates error', e); }
+  } catch (e) { /* noop (debug removed) */ }
   },
   
   // Canvas state
@@ -90,12 +98,21 @@ export const useStore = create<AppState>((set) => ({
   // Selected image for modal
   selectedImage: null,
   setSelectedImage: (image) => set({ selectedImage: image }),
+  // Modal task preselection (e.g. 'image-to-video')
+  modalTask: null,
+  setModalTask: (task) => set({ modalTask: task }),
   // Newly generated single result
   newlyGeneratedImage: null,
   setNewlyGeneratedImage: (image) => set({ newlyGeneratedImage: image }),
   // Generation trigger token
   generationTrigger: null,
   setGenerationTrigger: (token) => set({ generationTrigger: token }),
+  // Credits system (default 0 until initialized)
+  credits: 0,
+  initializeCredits: () => set({ credits: 2 }),
+  deductCredit: () => set((state: AppState) => ({ credits: Math.max(0, (state.credits || 0) - 1) })),
+  // Set authoritative credits value (from server)
+  setCredits: (n: number) => set({ credits: Math.max(0, n) }),
 }));
 
 // Expose store to window for E2E tests to inspect state (only in browser)
@@ -130,7 +147,7 @@ export function clearTemplates() {
     }, 0);
     return true;
   } catch (e) {
-    console.debug('clearTemplates failed', e);
+    /* noop (debug removed) */
     return false;
   }
 }
@@ -153,7 +170,7 @@ export function addTemplates(templates: GeneratedImage[]) {
     });
     return true;
   } catch (e) {
-    console.debug('addTemplates failed', e);
+    /* noop (debug removed) */
     return false;
   }
 }
@@ -175,7 +192,7 @@ export function setPreviewVideo(id: string, url: string) {
     });
     return true;
   } catch (e) {
-    console.debug('setPreviewVideo failed', e);
+    /* noop (debug removed) */
     return false;
   }
 }
@@ -184,7 +201,7 @@ export function setPreviewVideo(id: string, url: string) {
 // Attach helpers to window for DEV/E2E. Use eslint-disable comments to avoid noisy rules
 // since these are intentionally dynamic, dev-only helpers.
 /* eslint-disable @typescript-eslint/no-explicit-any */
-if (typeof window !== 'undefined' && (import.meta.env.DEV || window.__E2E__)) {
+if (typeof window !== 'undefined' && (import.meta.env.DEV || (window as any).__E2E__)) {
   try {
   (window as any).__APP_STORE_HELPERS__ = (window as any).__APP_STORE_HELPERS__ || {};
   (window as any).__APP_STORE_HELPERS__.clearTemplates = clearTemplates;
@@ -199,6 +216,6 @@ if (typeof window !== 'undefined' && (import.meta.env.DEV || window.__E2E__)) {
     (window as any).__APP_STORE_HELPERS__.setPreviewVideo = (id: string, url: string) => {
       return setPreviewVideo(id, url);
     };
-  } catch (e) { console.debug('attach helpers failed', e); }
+  } catch (e) { /* noop (debug removed) */ }
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
